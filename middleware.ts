@@ -12,6 +12,14 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next()
   }
 
+  // Special case for debug page - allow access with debug key
+  if (request.nextUrl.pathname === "/debug") {
+    const debugKey = request.nextUrl.searchParams.get("key")
+    if (debugKey === process.env.DEBUG_KEY) {
+      return NextResponse.next()
+    }
+  }
+
   // Special case for db-setup page - allow access with setup key
   if (request.nextUrl.pathname === "/admin/db-setup") {
     const setupKey = request.nextUrl.searchParams.get("key")
