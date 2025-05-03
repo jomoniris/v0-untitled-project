@@ -5,8 +5,8 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuLabel,
   DropdownMenuSeparator,
+  DropdownMenuLabel,
   DropdownMenuTrigger,
   DropdownMenuSub,
   DropdownMenuSubContent,
@@ -39,7 +39,33 @@ export function TopNavbar() {
           <span className="hidden md:inline-block">Car Rental Hub</span>
         </Link>
 
-        <nav className="ml-8 hidden md:flex items-center space-x-4">
+        <nav className="ml-8 flex items-center space-x-4">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="link" className="text-sm font-medium h-8 px-2 py-0 flex items-center gap-1">
+                Fleet
+                <ChevronDown className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" className="w-48">
+              <DropdownMenuItem asChild>
+                <Link href="/admin/fleet/non-revenue-movement">Non Revenue Movement</Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <Link href="/admin/fleet/preparations">Fleet Preparations</Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <Link href="/admin/fleet/tolls">Tolls Management</Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <Link href="/admin/fleet/traffic-fine">Traffic Fine</Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <Link href="/admin/fleet/parking">Parking Management</Link>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="link" className="text-sm font-medium h-8 px-2 py-0 flex items-center gap-1">
@@ -50,15 +76,6 @@ export function TopNavbar() {
             <DropdownMenuContent align="start" className="w-48">
               <DropdownMenuItem asChild>
                 <Link href="/admin/rate-and-policies/rental-rates">Rental Rates</Link>
-              </DropdownMenuItem>
-              <DropdownMenuItem asChild>
-                <Link href="/admin/rate-and-policies/policies">Policies</Link>
-              </DropdownMenuItem>
-              <DropdownMenuItem asChild>
-                <Link href="/admin/rate-and-policies/terms">Terms & Conditions</Link>
-              </DropdownMenuItem>
-              <DropdownMenuItem asChild>
-                <Link href="/admin/rate-and-policies/discounts">Discounts</Link>
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>

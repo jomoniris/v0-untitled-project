@@ -1,5 +1,6 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { StaffTable } from "@/components/staff-table"
 
 export default function CompanyPage() {
   return (
@@ -35,9 +36,7 @@ export default function CompanyPage() {
               <CardDescription>Manage employees and access permissions</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="h-[350px] flex items-center justify-center">
-                <p className="text-muted-foreground">Staff management will be displayed here</p>
-              </div>
+              <StaffTable />
             </CardContent>
           </Card>
         </TabsContent>
