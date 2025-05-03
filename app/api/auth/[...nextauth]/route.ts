@@ -1,17 +1,26 @@
 import NextAuth from "next-auth"
 import CredentialsProvider from "next-auth/providers/credentials"
+import bcryptjs from "bcryptjs"
 
-// Simplified auth options without database dependencies for initial setup
+// Define hardcoded users for testing
+const users = [
+  {
+    id: "admin-user-id",
+    name: "Admin User",
+    email: "admin@example.com",
+    password: "$2a$10$GQH.xI9oCY6aYB4OMOVVXOLXCjL7KO9nFAEMxukdcXMkiMWiRHvMi", // admin123
+    role: "ADMIN",
+  },
+  {
+    id: "staff-user-id",
+    name: "Staff User",
+    email: "staff@example.com",
+    password: "$2a$10$zGQ/4o0h0v0VC5.YV/KYVeRwJpOYccm9bd/1n8lfKyy0NLgQkFGlS", // staff123
+    role: "STAFF",
+  },
+]
+
 export const authOptions = {
-  secret: process.env.NEXTAUTH_SECRET || "a-very-secure-secret-that-should-be-changed",
-  session: {
-    strategy: "jwt",
-    maxAge: 30 * 24 * 60 * 60, // 30 days
-  },
-  pages: {
-    signIn: "/login",
-    error: "/login",
-  },
   providers: [
     CredentialsProvider({
       name: "Credentials",
@@ -20,27 +29,27 @@ export const authOptions = {
         password: { label: "Password", type: "password" },
       },
       async authorize(credentials) {
-        // Hardcoded admin user for testing
-        if (credentials?.email === "admin@example.com" && credentials?.password === "admin123") {
-          return {
-            id: "admin-user-id",
-            name: "Admin User",
-            email: "admin@example.com",
-            role: "ADMIN",
-          }
+        if (!credentials?.email || !credentials?.password) {
+          return null
         }
 
-        // Hardcoded staff user for testing
-        if (credentials?.email === "staff@example.com" && credentials?.password === "staff123") {
-          return {
-            id: "staff-user-id",
-            name: "Staff User",
-            email: "staff@example.com",
-            role: "STAFF",
-          }
+        const user = users.find((user) => user.email === credentials.email)
+        if (!user) {
+          return null
         }
 
-        return null
+        const isPasswordValid = await bcryptjs.compare(credentials.password, user.password)
+
+        if (!isPasswordValid) {
+          return null
+        }
+
+        return {
+          id: user.id,
+          name: user.name,
+          email: user.email,
+          role: user.role,
+        }
       },
     }),
   ],
@@ -60,6 +69,15 @@ export const authOptions = {
       return session
     },
   },
+  pages: {
+    signIn: "/login",
+    error: "/login",
+  },
+  session: {
+    strategy: "jwt",
+    maxAge: 30 * 24 * 60 * 60, // 30 days
+  },
+  secret: process.env.NEXTAUTH_SECRET,
   debug: process.env.NODE_ENV === "development",
 }
 

@@ -11,10 +11,10 @@ export default async function DashboardPage() {
   }
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold">Dashboard</h1>
-        <p className="text-gray-500">Welcome to your Car Rental Admin dashboard.</p>
+    <div className="p-8">
+      <div className="mb-6">
+        <h1 className="text-3xl font-bold">Welcome, {session.user.name}</h1>
+        <p className="text-gray-500">Role: {session.user.role}</p>
       </div>
 
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
@@ -43,48 +43,22 @@ export default async function DashboardPage() {
         </Card>
       </div>
 
-      <div className="grid gap-6 md:grid-cols-2">
-        <Card className="p-6">
-          <h3 className="text-lg font-medium mb-4">Recent Rentals</h3>
-          <div className="space-y-4">
-            {[1, 2, 3, 4].map((i) => (
-              <div key={i} className="flex justify-between items-center">
-                <div>
-                  <p className="font-medium">Rental #{1000 + i}</p>
-                  <p className="text-sm text-gray-500">Customer: John Doe</p>
-                </div>
-                <div className="text-right">
-                  <p className="font-medium">Toyota Camry</p>
-                  <p className="text-sm text-gray-500">
-                    May {i + 1} - May {i + 5}
-                  </p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </Card>
-
-        <Card className="p-6">
-          <h3 className="text-lg font-medium mb-4">Vehicle Status</h3>
-          <div className="space-y-4">
-            <div className="flex justify-between items-center">
-              <p>Available</p>
-              <p className="font-medium">18</p>
-            </div>
-            <div className="flex justify-between items-center">
-              <p>Rented</p>
-              <p className="font-medium">12</p>
-            </div>
-            <div className="flex justify-between items-center">
-              <p>Maintenance</p>
-              <p className="font-medium">3</p>
-            </div>
-            <div className="flex justify-between items-center">
-              <p>Reserved</p>
-              <p className="font-medium">5</p>
-            </div>
-          </div>
-        </Card>
+      <div className="mt-8">
+        <h2 className="text-2xl font-bold mb-4">Quick Actions</h2>
+        <div className="grid gap-4 md:grid-cols-3">
+          <a href="/admin/vehicles" className="block p-4 bg-blue-50 rounded-lg hover:bg-blue-100">
+            <h3 className="font-medium">Manage Vehicles</h3>
+            <p className="text-sm text-gray-500">View and edit vehicle inventory</p>
+          </a>
+          <a href="/admin/rentals" className="block p-4 bg-green-50 rounded-lg hover:bg-green-100">
+            <h3 className="font-medium">Manage Rentals</h3>
+            <p className="text-sm text-gray-500">Process and track rentals</p>
+          </a>
+          <a href="/admin/customers" className="block p-4 bg-purple-50 rounded-lg hover:bg-purple-100">
+            <h3 className="font-medium">Manage Customers</h3>
+            <p className="text-sm text-gray-500">View customer information</p>
+          </a>
+        </div>
       </div>
     </div>
   )
