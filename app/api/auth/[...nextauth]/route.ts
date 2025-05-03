@@ -22,6 +22,13 @@ export const authOptions = {
             where: {
               email: credentials.email,
             },
+            select: {
+              id: true,
+              name: true,
+              email: true,
+              hashedPassword: true,
+              role: true,
+            },
           })
 
           if (!user || !user.hashedPassword) {
