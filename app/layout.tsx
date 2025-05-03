@@ -1,6 +1,7 @@
 import type React from "react"
-import "./globals.css"
 import { NextAuthProvider } from "@/components/providers/session-provider"
+import { SessionDebug } from "@/components/session-debug"
+import "./globals.css"
 
 export const metadata = {
   title: "Car Rental Admin",
@@ -16,7 +17,10 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body>
-        <NextAuthProvider>{children}</NextAuthProvider>
+        <NextAuthProvider>
+          {children}
+          <SessionDebug />
+        </NextAuthProvider>
       </body>
     </html>
   )

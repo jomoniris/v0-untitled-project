@@ -1,10 +1,35 @@
 "use client"
 
 import { useSession } from "next-auth/react"
+import { useEffect } from "react"
+import { useRouter } from "next/navigation"
 import { Card } from "@/components/ui/card"
 
 export default function AdminDashboard() {
-  const { data: session } = useSession()
+  const { data: session, status } = useSession()
+  const router = useRouter()
+
+  useEffect(() => {
+    if (status === "unauthenticated") {
+      console.log("User is unauthenticated on admin page, redirecting to /login")
+      router.push("/login")
+    }
+  }, [status, router])
+
+  if (status === "loading") {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <div className="text-center">
+          <div className="w-16 h-16 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto"></div>
+          <p className="mt-4 text-gray-600">Loading...</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (status === "unauthenticated") {
+    return null
+  }
 
   return (
     <div className="space-y-6">
