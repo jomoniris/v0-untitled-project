@@ -2,25 +2,15 @@
 
 import type React from "react"
 
-import { useState, useEffect } from "react"
-import { signIn, useSession } from "next-auth/react"
-import { useRouter } from "next/navigation"
+import { useState } from "react"
+import { signIn } from "next-auth/react"
 
 export function LoginForm() {
-  const router = useRouter()
-  const { data: session, status } = useSession()
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [error, setError] = useState("")
   const [isLoading, setIsLoading] = useState(false)
-
-  // Redirect if already authenticated
-  useEffect(() => {
-    if (status === "authenticated") {
-      console.log("User is authenticated, redirecting to /admin")
-      window.location.href = "/admin"
-    }
-  }, [status])
+  const [success, setSuccess] = useState(false)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -34,15 +24,11 @@ export function LoginForm() {
       setIsLoading(true)
       setError("")
 
-      console.log("Attempting to sign in with:", email)
-
       const result = await signIn("credentials", {
         redirect: false,
         email,
         password,
       })
-
-      console.log("Sign in result:", result)
 
       if (result?.error) {
         setError("Invalid email or password")
@@ -50,9 +36,12 @@ export function LoginForm() {
         return
       }
 
-      // Force a hard redirect
-      console.log("Login successful, redirecting to /admin")
-      window.location.href = "/admin"
+      setSuccess(true)
+
+      // Simple redirect with a delay to ensure session is set
+      setTimeout(() => {
+        window.location.href = "/admin"
+      }, 1000)
     } catch (err) {
       console.error("Login error:", err)
       setError("An unexpected error occurred")
@@ -60,12 +49,11 @@ export function LoginForm() {
     }
   }
 
-  // If already authenticated, show a message
-  if (status === "authenticated") {
+  if (success) {
     return (
-      <div className="text-center">
-        <div className="w-16 h-16 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto"></div>
-        <p className="mt-4 text-gray-600">Already logged in. Redirecting to dashboard...</p>
+      <div className="text-center p-4 bg-green-50 rounded-md">
+        <p className="text-green-700 font-medium">Login successful!</p>
+        <p className="text-green-600 mt-2">Redirecting to dashboard...</p>
       </div>
     )
   }

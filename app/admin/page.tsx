@@ -1,113 +1,39 @@
-"use client"
-
-import { useSession } from "next-auth/react"
-import { useEffect } from "react"
-import { useRouter } from "next/navigation"
-import { Card } from "@/components/ui/card"
-
-export default function AdminDashboard() {
-  const { data: session, status } = useSession()
-  const router = useRouter()
-
-  useEffect(() => {
-    if (status === "unauthenticated") {
-      console.log("User is unauthenticated on admin page, redirecting to /login")
-      router.push("/login")
-    }
-  }, [status, router])
-
-  if (status === "loading") {
-    return (
-      <div className="flex items-center justify-center h-screen">
-        <div className="text-center">
-          <div className="w-16 h-16 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading...</p>
-        </div>
-      </div>
-    )
-  }
-
-  if (status === "unauthenticated") {
-    return null
-  }
-
+export default function AdminPage() {
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold">Dashboard</h1>
-        <p className="text-gray-500">
-          Welcome, {session?.user?.name || "User"}! Role: {session?.user?.role || "N/A"}
-        </p>
-      </div>
+    <div className="p-8">
+      <h1 className="text-2xl font-bold mb-4">Admin Dashboard</h1>
+      <p>Welcome to the Car Rental Admin Dashboard</p>
 
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
-        <Card className="p-6">
-          <h3 className="text-lg font-medium">Total Vehicles</h3>
-          <p className="text-3xl font-bold mt-2">24</p>
-          <p className="text-sm text-gray-500 mt-1">3 unavailable</p>
-        </Card>
-
-        <Card className="p-6">
-          <h3 className="text-lg font-medium">Active Rentals</h3>
-          <p className="text-3xl font-bold mt-2">12</p>
-          <p className="text-sm text-gray-500 mt-1">4 due today</p>
-        </Card>
-
-        <Card className="p-6">
-          <h3 className="text-lg font-medium">Customers</h3>
-          <p className="text-3xl font-bold mt-2">156</p>
-          <p className="text-sm text-gray-500 mt-1">12 new this month</p>
-        </Card>
-
-        <Card className="p-6">
-          <h3 className="text-lg font-medium">Revenue</h3>
-          <p className="text-3xl font-bold mt-2">$12,450</p>
-          <p className="text-sm text-gray-500 mt-1">+8% from last month</p>
-        </Card>
-      </div>
-
-      <div className="grid gap-6 md:grid-cols-2">
-        <Card className="p-6">
-          <h3 className="text-lg font-medium mb-4">Recent Rentals</h3>
-          <div className="space-y-4">
-            {[1, 2, 3, 4].map((i) => (
-              <div key={i} className="flex justify-between items-center">
-                <div>
-                  <p className="font-medium">Rental #{1000 + i}</p>
-                  <p className="text-sm text-gray-500">Customer: John Doe</p>
-                </div>
-                <div className="text-right">
-                  <p className="font-medium">Toyota Camry</p>
-                  <p className="text-sm text-gray-500">
-                    May {i + 1} - May {i + 5}
-                  </p>
-                </div>
-              </div>
-            ))}
+      <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="bg-white overflow-hidden shadow rounded-lg">
+          <div className="px-4 py-5 sm:p-6">
+            <h3 className="text-lg font-medium text-gray-900">Vehicles</h3>
+            <p className="mt-1 text-sm text-gray-500">Manage your vehicle fleet</p>
+            <a href="/admin/vehicles" className="mt-3 text-sm font-medium text-blue-600 hover:text-blue-500">
+              View vehicles →
+            </a>
           </div>
-        </Card>
+        </div>
 
-        <Card className="p-6">
-          <h3 className="text-lg font-medium mb-4">Vehicle Status</h3>
-          <div className="space-y-4">
-            <div className="flex justify-between items-center">
-              <p>Available</p>
-              <p className="font-medium">18</p>
-            </div>
-            <div className="flex justify-between items-center">
-              <p>Rented</p>
-              <p className="font-medium">12</p>
-            </div>
-            <div className="flex justify-between items-center">
-              <p>Maintenance</p>
-              <p className="font-medium">3</p>
-            </div>
-            <div className="flex justify-between items-center">
-              <p>Reserved</p>
-              <p className="font-medium">5</p>
-            </div>
+        <div className="bg-white overflow-hidden shadow rounded-lg">
+          <div className="px-4 py-5 sm:p-6">
+            <h3 className="text-lg font-medium text-gray-900">Customers</h3>
+            <p className="mt-1 text-sm text-gray-500">Manage customer accounts</p>
+            <a href="/admin/customers" className="mt-3 text-sm font-medium text-blue-600 hover:text-blue-500">
+              View customers →
+            </a>
           </div>
-        </Card>
+        </div>
+
+        <div className="bg-white overflow-hidden shadow rounded-lg">
+          <div className="px-4 py-5 sm:p-6">
+            <h3 className="text-lg font-medium text-gray-900">Rentals</h3>
+            <p className="mt-1 text-sm text-gray-500">Manage rental bookings</p>
+            <a href="/admin/rentals" className="mt-3 text-sm font-medium text-blue-600 hover:text-blue-500">
+              View rentals →
+            </a>
+          </div>
+        </div>
       </div>
     </div>
   )
