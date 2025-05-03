@@ -1,23 +1,7 @@
 import NextAuth from "next-auth"
 import CredentialsProvider from "next-auth/providers/credentials"
-
-// Hardcoded users for testing - in a real app, these would come from a database
-const users = [
-  {
-    id: "admin-id",
-    name: "Admin User",
-    email: "admin@example.com",
-    password: "admin123", // In a real app, this would be hashed
-    role: "ADMIN",
-  },
-  {
-    id: "staff-id",
-    name: "Staff User",
-    email: "staff@example.com",
-    password: "staff123", // In a real app, this would be hashed
-    role: "STAFF",
-  },
-]
+import { compare } from "bcryptjs"
+import prisma from "@/lib/db"
 
 export const authOptions = {
   providers: [
@@ -32,23 +16,34 @@ export const authOptions = {
           return null
         }
 
-        // Find user by email
-        const user = users.find((user) => user.email === credentials.email)
-        if (!user) {
-          return null
-        }
+        try {
+          const user = await prisma.user.findUnique({
+            where: {
+              email: credentials.email,
+            },
+          })
 
-        // Check password (in a real app, you would compare hashed passwords)
-        if (user.password !== credentials.password) {
-          return null
-        }
+          if (!user || !user.hashedPassword) {
+            console.log("User not found or no password")
+            return null
+          }
 
-        // Return user without password
-        return {
-          id: user.id,
-          name: user.name,
-          email: user.email,
-          role: user.role,
+          const isPasswordValid = await compare(credentials.password, user.hashedPassword)
+
+          if (!isPasswordValid) {
+            console.log("Invalid password")
+            return null
+          }
+
+          return {
+            id: user.id,
+            name: user.name,
+            email: user.email,
+            role: user.role,
+          }
+        } catch (error) {
+          console.error("Auth error:", error)
+          return null
         }
       },
     }),
@@ -77,6 +72,7 @@ export const authOptions = {
     maxAge: 30 * 24 * 60 * 60, // 30 days
   },
   secret: process.env.NEXTAUTH_SECRET || "fallback-secret-do-not-use-in-production",
+  debug: process.env.NODE_ENV === "development",
 }
 
 const handler = NextAuth(authOptions)

@@ -12,6 +12,14 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next()
   }
 
+  // Special case for db-setup page - allow access with setup key
+  if (request.nextUrl.pathname === "/admin/db-setup") {
+    const setupKey = request.nextUrl.searchParams.get("key")
+    if (setupKey === process.env.SETUP_KEY) {
+      return NextResponse.next()
+    }
+  }
+
   // Check if user is authenticated
   const token = await getToken({
     req: request,
@@ -21,6 +29,16 @@ export async function middleware(request: NextRequest) {
   // Redirect unauthenticated users to login
   if (!token && request.nextUrl.pathname.startsWith("/admin")) {
     return NextResponse.redirect(new URL("/login", request.url))
+  }
+
+  // Redirect authenticated users to dashboard
+  if (token && request.nextUrl.pathname === "/") {
+    return NextResponse.redirect(new URL("/admin/dashboard", request.url))
+  }
+
+  // Redirect authenticated users from login page to dashboard
+  if (token && request.nextUrl.pathname === "/login") {
+    return NextResponse.redirect(new URL("/admin/dashboard", request.url))
   }
 
   return NextResponse.next()
