@@ -4,11 +4,15 @@ import type React from "react"
 
 import { useState } from "react"
 import { signIn } from "next-auth/react"
+import { useSearchParams } from "next/navigation"
 
 export function LoginForm() {
+  const searchParams = useSearchParams()
+  const error = searchParams.get("error")
+
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
-  const [error, setError] = useState("")
+  const [loginError, setLoginError] = useState(error ? "Invalid email or password" : "")
   const [isLoading, setIsLoading] = useState(false)
   const [success, setSuccess] = useState(false)
 
@@ -16,13 +20,15 @@ export function LoginForm() {
     e.preventDefault()
 
     if (!email || !password) {
-      setError("Email and password are required")
+      setLoginError("Email and password are required")
       return
     }
 
     try {
       setIsLoading(true)
-      setError("")
+      setLoginError("")
+
+      console.log("Attempting to sign in with:", email)
 
       const result = await signIn("credentials", {
         redirect: false,
@@ -30,8 +36,10 @@ export function LoginForm() {
         password,
       })
 
+      console.log("Sign in result:", result)
+
       if (result?.error) {
-        setError("Invalid email or password")
+        setLoginError("Invalid email or password")
         setIsLoading(false)
         return
       }
@@ -44,7 +52,7 @@ export function LoginForm() {
       }, 1000)
     } catch (err) {
       console.error("Login error:", err)
-      setError("An unexpected error occurred")
+      setLoginError("An unexpected error occurred")
       setIsLoading(false)
     }
   }
@@ -60,9 +68,9 @@ export function LoginForm() {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
-      {error && (
+      {loginError && (
         <div className="rounded-md bg-red-50 p-4">
-          <div className="text-sm text-red-700">{error}</div>
+          <div className="text-sm text-red-700">{loginError}</div>
         </div>
       )}
 
