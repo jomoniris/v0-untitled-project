@@ -1,21 +1,12 @@
 import type React from "react"
-import { getServerSession } from "next-auth"
-import { authOptions } from "@/app/api/auth/[...nextauth]/route"
-import { redirect } from "next/navigation"
 import Link from "next/link"
 import { LogOut, Menu, User } from "lucide-react"
 
-export default async function AdminLayout({
+export default function AdminLayout({
   children,
 }: {
   children: React.ReactNode
 }) {
-  const session = await getServerSession(authOptions)
-
-  if (!session) {
-    redirect("/login")
-  }
-
   return (
     <div className="min-h-screen bg-gray-100">
       {/* Header */}
@@ -27,21 +18,12 @@ export default async function AdminLayout({
               Car Rental Admin
             </Link>
           </div>
-          <div className="flex items-center gap-4">
-            <div className="text-sm text-gray-600">
-              <span className="hidden md:inline">Logged in as </span>
-              <span className="font-medium">{session.user.name}</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <User className="h-5 w-5" />
-              <Link
-                href="/api/auth/signout"
-                className="text-red-600 hover:text-red-800 text-sm flex items-center gap-1"
-              >
-                <LogOut className="h-4 w-4" />
-                <span className="hidden md:inline">Sign out</span>
-              </Link>
-            </div>
+          <div className="flex items-center gap-2">
+            <User className="h-5 w-5" />
+            <Link href="/api/auth/signout" className="text-red-600 hover:text-red-800 text-sm flex items-center gap-1">
+              <LogOut className="h-4 w-4" />
+              <span className="hidden md:inline">Sign out</span>
+            </Link>
           </div>
         </div>
       </header>

@@ -3,28 +3,27 @@ import { getToken } from "next-auth/jwt"
 import type { NextRequest } from "next/server"
 
 export async function middleware(request: NextRequest) {
-  const { pathname } = request.nextUrl
-
-  // Bypass authentication for login page and API routes
-  if (pathname.startsWith("/login") || pathname.startsWith("/api/")) {
+  // Skip middleware for API routes and public files
+  if (
+    request.nextUrl.pathname.startsWith("/api/") ||
+    request.nextUrl.pathname.startsWith("/_next/") ||
+    request.nextUrl.pathname.includes(".")
+  ) {
     return NextResponse.next()
   }
 
-  // Check if user is authenticated
   const token = await getToken({
     req: request,
     secret: process.env.NEXTAUTH_SECRET,
   })
 
-  // Redirect to login if not authenticated
-  if (!token && pathname.startsWith("/admin")) {
-    const url = new URL("/login", request.url)
-    url.searchParams.set("callbackUrl", encodeURI(request.url))
-    return NextResponse.redirect(url)
+  // Redirect unauthenticated users to login
+  if (!token && request.nextUrl.pathname.startsWith("/admin")) {
+    return NextResponse.redirect(new URL("/login", request.url))
   }
 
-  // Redirect root to admin dashboard if authenticated
-  if (token && pathname === "/") {
+  // Redirect authenticated users to dashboard
+  if (token && request.nextUrl.pathname === "/") {
     return NextResponse.redirect(new URL("/admin/dashboard", request.url))
   }
 
@@ -32,5 +31,5 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/", "/admin/:path*", "/login"],
+  matcher: ["/((?!api|_next/static|_next/image|favicon.ico).*)"],
 }

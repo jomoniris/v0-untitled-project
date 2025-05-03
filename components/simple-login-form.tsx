@@ -4,8 +4,10 @@ import type React from "react"
 
 import { useState } from "react"
 import { signIn } from "next-auth/react"
+import { useRouter } from "next/navigation"
 
 export function SimpleLoginForm() {
+  const router = useRouter()
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [error, setError] = useState("")
@@ -23,15 +25,21 @@ export function SimpleLoginForm() {
       setIsLoading(true)
       setError("")
 
-      // Use the redirect: true option to let NextAuth handle the redirect
-      await signIn("credentials", {
-        redirect: true,
-        callbackUrl: "/admin/dashboard",
+      const result = await signIn("credentials", {
+        redirect: false,
         email,
         password,
       })
 
-      // The page will be redirected by NextAuth, so no need for additional redirect logic
+      if (result?.error) {
+        setError("Invalid email or password")
+        setIsLoading(false)
+        return
+      }
+
+      // Use client-side navigation
+      router.push("/admin/dashboard")
+      router.refresh()
     } catch (err) {
       console.error("Login error:", err)
       setError("An unexpected error occurred")
