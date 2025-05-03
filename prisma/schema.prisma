@@ -16,7 +16,7 @@ model User {
   id             String   @id @default(cuid())
   name           String?
   email          String   @unique
-  emailVerified  DateTime?
+  // Remove emailVerified field since it doesn't exist in the database
   image          String?
   hashedPassword String?
   role           Role     @default(STAFF)
@@ -152,7 +152,7 @@ model Location {
   zone        Zone?      @relation(fields: [zoneId], references: [id])
   isAirport   Boolean    @default(false)
   latitude    Float?
-  longitude   Float?
+  longitude    Float?
   createdAt   DateTime   @default(now())
   updatedAt   DateTime   @updatedAt
   isActive    Boolean    @default(true)
