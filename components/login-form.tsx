@@ -39,11 +39,15 @@ export function LoginForm() {
     setError(null)
 
     try {
+      console.log("Attempting to sign in with:", values.email)
+
       const response = await signIn("credentials", {
         email: values.email,
         password: values.password,
         redirect: false,
       })
+
+      console.log("Sign in response:", response)
 
       if (response?.error) {
         setError("Invalid email or password. Please try again.")
@@ -56,6 +60,7 @@ export function LoginForm() {
         router.refresh()
       }
     } catch (error) {
+      console.error("Login error:", error)
       setError("An unexpected error occurred. Please try again.")
       setIsLoading(false)
     }
@@ -118,6 +123,13 @@ export function LoginForm() {
       <Button variant="outline" onClick={() => router.push("/forgot-password")} disabled={isLoading}>
         Forgot Password?
       </Button>
+
+      {/* Test credentials helper */}
+      <div className="text-center text-sm text-muted-foreground">
+        <p>Test credentials:</p>
+        <p>Email: test@example.com</p>
+        <p>Password: test123</p>
+      </div>
     </div>
   )
 }

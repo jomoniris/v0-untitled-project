@@ -14,7 +14,7 @@ datasource db {
 // User model for authentication and staff members
 model User {
   id             String   @id @default(cuid())
-  name           String
+  name           String?
   email          String   @unique
   emailVerified  DateTime?
   image          String?
@@ -25,17 +25,15 @@ model User {
   phone          String?
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
-  isActive       Boolean  @default(true)
-  rentals        Rental[]
-  movements      NonRevenueMovement[]
-  nrtEntries     NRTEntry[]
+  rentals             Rental[]
+  nrtEntries          NRTEntry[]
+  nonRevenueMovements NonRevenueMovement[] @relation("Driver")
 }
 
 enum Role {
   ADMIN
   MANAGER
   STAFF
-  CUSTOMER
 }
 
 // Customer model
@@ -329,7 +327,7 @@ model NonRevenueMovement {
   reason              String?
   notes               String?
   driverId            String?
-  driver              User?     @relation(fields: [driverId], references: [id])
+  driver              User?     @relation("Driver", fields: [driverId], references: [id])
   mileageBefore       Int?
   mileageAfter        Int?
   fuelLevelBefore     Float?
