@@ -1,135 +1,130 @@
 "use client"
 
 import { useState } from "react"
-import { useRouter } from "next/navigation"
-import { signIn } from "next-auth/react"
-import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
-import * as z from "zod"
+import { zodResolver } from "@hookform/resolvers/zod"
+import { z } from "zod"
+import { signIn } from "next-auth/react"
+import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
+import { Label } from "@/components/ui/label"
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { Loader2 } from "lucide-react"
+import { ExclamationTriangleIcon } from "@radix-ui/react-icons"
 
-const formSchema = z.object({
-  email: z.string().email({
-    message: "Please enter a valid email address.",
-  }),
-  password: z.string().min(1, {
-    message: "Password is required.",
-  }),
+const loginSchema = z.object({
+  email: z.string().email({ message: "Please enter a valid email address" }),
+  password: z.string().min(6, { message: "Password must be at least 6 characters" }),
 })
+
+type LoginFormValues = z.infer<typeof loginSchema>
 
 export function LoginForm() {
   const router = useRouter()
+  const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [isLoading, setIsLoading] = useState<boolean>(false)
 
-  const form = useForm<z.infer<typeof formSchema>>({
-    resolver: zodResolver(formSchema),
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+  } = useForm<LoginFormValues>({
+    resolver: zodResolver(loginSchema),
     defaultValues: {
       email: "",
       password: "",
     },
   })
 
-  async function onSubmit(values: z.infer<typeof formSchema>) {
-    setIsLoading(true)
-    setError(null)
-
+  const onSubmit = async (data: LoginFormValues) => {
     try {
-      console.log("Attempting to sign in with:", values.email)
+      setIsLoading(true)
+      setError(null)
 
-      const response = await signIn("credentials", {
-        email: values.email,
-        password: values.password,
+      const result = await signIn("credentials", {
         redirect: false,
+        email: data.email,
+        password: data.password,
       })
 
-      console.log("Sign in response:", response)
-
-      if (response?.error) {
+      if (result?.error) {
         setError("Invalid email or password. Please try again.")
-        setIsLoading(false)
         return
       }
 
-      if (response?.ok) {
-        router.push("/admin")
-        router.refresh()
-      }
+      router.push("/admin")
+      router.refresh()
     } catch (error) {
+      setError("An unexpected error occurred. Please try again later.")
       console.error("Login error:", error)
-      setError("An unexpected error occurred. Please try again.")
+    } finally {
       setIsLoading(false)
     }
   }
 
   return (
-    <div className="grid gap-6">
-      <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+    <Card className="w-full max-w-md">
+      <CardHeader>
+        <CardTitle className="text-2xl">Sign In</CardTitle>
+        <CardDescription>Enter your email and password to access your account</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           {error && (
             <Alert variant="destructive">
+              <ExclamationTriangleIcon className="h-4 w-4" />
               <AlertDescription>{error}</AlertDescription>
             </Alert>
           )}
-          <FormField
-            control={form.control}
-            name="email"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Email</FormLabel>
-                <FormControl>
-                  <Input placeholder="name@company.com" {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-          <FormField
-            control={form.control}
-            name="password"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Password</FormLabel>
-                <FormControl>
-                  <Input type="password" placeholder="••••••••" {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
+          <div className="space-y-2">
+            <Label htmlFor="email">Email</Label>
+            <Input
+              id="email"
+              placeholder="name@example.com"
+              type="email"
+              autoCapitalize="none"
+              autoComplete="email"
+              autoCorrect="off"
+              disabled={isLoading}
+              {...register("email")}
+            />
+            {errors.email && <p className="text-sm text-red-500">{errors.email.message}</p>}
+          </div>
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <Label htmlFor="password">Password</Label>
+              <Button variant="link" className="px-0 font-normal" size="sm" asChild>
+                <a href="/forgot-password">Forgot password?</a>
+              </Button>
+            </div>
+            <Input
+              id="password"
+              type="password"
+              autoComplete="current-password"
+              disabled={isLoading}
+              {...register("password")}
+            />
+            {errors.password && <p className="text-sm text-red-500">{errors.password.message}</p>}
+          </div>
           <Button type="submit" className="w-full" disabled={isLoading}>
-            {isLoading ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Please wait
-              </>
-            ) : (
-              "Sign In"
-            )}
+            {isLoading ? "Signing in..." : "Sign In"}
           </Button>
         </form>
-      </Form>
-      <div className="relative">
-        <div className="absolute inset-0 flex items-center">
-          <span className="w-full border-t" />
-        </div>
-        <div className="relative flex justify-center text-xs uppercase">
-          <span className="bg-background px-2 text-muted-foreground">Or</span>
-        </div>
-      </div>
-      <Button variant="outline" onClick={() => router.push("/forgot-password")} disabled={isLoading}>
-        Forgot Password?
-      </Button>
-
-      {/* Test credentials helper */}
-      <div className="text-center text-sm text-muted-foreground">
-        <p>Test credentials:</p>
-        <p>Email: test@example.com</p>
-        <p>Password: test123</p>
-      </div>
-    </div>
+      </CardContent>
+      <CardFooter className="flex justify-center">
+        <p className="text-sm text-muted-foreground">
+          By continuing, you agree to our{" "}
+          <a href="/terms" className="underline">
+            Terms of Service
+          </a>{" "}
+          and{" "}
+          <a href="/privacy" className="underline">
+            Privacy Policy
+          </a>
+          .
+        </p>
+      </CardFooter>
+    </Card>
   )
 }

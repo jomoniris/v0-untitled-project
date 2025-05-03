@@ -65,7 +65,8 @@
     "next-auth": "latest",
     "bcryptjs": "latest",
     "child_process": "latest",
-    "@next-auth/prisma-adapter": "latest"
+    "@next-auth/prisma-adapter": "latest",
+    "@radix-ui/react-icons": "latest"
   },
   "devDependencies": {
     "@types/node": "^22",
