@@ -1,6 +1,6 @@
 import { PrismaClient } from "@prisma/client"
 
-// Use environment variables for database connection
+// Create a single instance of Prisma Client for the entire application
 const globalForPrisma = global as unknown as { prisma: PrismaClient }
 
 export const prisma =

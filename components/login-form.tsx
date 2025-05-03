@@ -4,9 +4,10 @@ import type React from "react"
 
 import { useState } from "react"
 import { signIn } from "next-auth/react"
-import { useSearchParams } from "next/navigation"
+import { useSearchParams, useRouter } from "next/navigation"
 
 export function LoginForm() {
+  const router = useRouter()
   const searchParams = useSearchParams()
   const error = searchParams.get("error")
 
@@ -14,7 +15,6 @@ export function LoginForm() {
   const [password, setPassword] = useState("")
   const [loginError, setLoginError] = useState(error ? "Invalid email or password" : "")
   const [isLoading, setIsLoading] = useState(false)
-  const [success, setSuccess] = useState(false)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -28,15 +28,11 @@ export function LoginForm() {
       setIsLoading(true)
       setLoginError("")
 
-      console.log("Attempting to sign in with:", email)
-
       const result = await signIn("credentials", {
         redirect: false,
         email,
         password,
       })
-
-      console.log("Sign in result:", result)
 
       if (result?.error) {
         setLoginError("Invalid email or password")
@@ -44,26 +40,13 @@ export function LoginForm() {
         return
       }
 
-      setSuccess(true)
-
-      // Simple redirect with a delay to ensure session is set
-      setTimeout(() => {
-        window.location.href = "/admin"
-      }, 1000)
+      // Redirect to admin dashboard
+      router.push("/admin")
     } catch (err) {
       console.error("Login error:", err)
       setLoginError("An unexpected error occurred")
       setIsLoading(false)
     }
-  }
-
-  if (success) {
-    return (
-      <div className="text-center p-4 bg-green-50 rounded-md">
-        <p className="text-green-700 font-medium">Login successful!</p>
-        <p className="text-green-600 mt-2">Redirecting to dashboard...</p>
-      </div>
-    )
   }
 
   return (
@@ -118,12 +101,6 @@ export function LoginForm() {
         >
           {isLoading ? "Signing in..." : "Sign in"}
         </button>
-      </div>
-
-      <div className="text-sm text-center text-gray-600">
-        <p>Test credentials:</p>
-        <p>Admin: admin@example.com / admin123</p>
-        <p>Staff: staff@example.com / staff123</p>
       </div>
     </form>
   )

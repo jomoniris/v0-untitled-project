@@ -13,34 +13,11 @@ export const authOptions = {
       },
       async authorize(credentials) {
         if (!credentials?.email || !credentials?.password) {
-          console.log("Missing credentials")
           return null
         }
 
         try {
-          // For testing purposes, allow hardcoded credentials
-          if (credentials.email === "admin@example.com" && credentials.password === "admin123") {
-            console.log("Using hardcoded admin credentials")
-            return {
-              id: "admin-id",
-              name: "Admin User",
-              email: "admin@example.com",
-              role: "ADMIN",
-            }
-          }
-
-          if (credentials.email === "staff@example.com" && credentials.password === "staff123") {
-            console.log("Using hardcoded staff credentials")
-            return {
-              id: "staff-id",
-              name: "Staff User",
-              email: "staff@example.com",
-              role: "STAFF",
-            }
-          }
-
-          // Try database lookup if hardcoded credentials don't match
-          console.log("Looking up user in database:", credentials.email)
+          // Find user by email
           const user = await prisma.user.findUnique({
             where: {
               email: credentials.email,
@@ -48,21 +25,20 @@ export const authOptions = {
           })
 
           if (!user || !user.hashedPassword) {
-            console.log("User not found or no password")
             return null
           }
 
+          // Compare password
           const isPasswordValid = await compare(credentials.password, user.hashedPassword)
 
           if (!isPasswordValid) {
-            console.log("Invalid password")
             return null
           }
 
-          console.log("User authenticated successfully:", user.email)
+          // Return user data (without sensitive information)
           return {
             id: user.id,
-            name: user.name || "User",
+            name: user.name || "",
             email: user.email,
             role: user.role,
           }
@@ -97,8 +73,7 @@ export const authOptions = {
     strategy: "jwt",
     maxAge: 30 * 24 * 60 * 60, // 30 days
   },
-  secret: process.env.NEXTAUTH_SECRET || "fallback-secret-do-not-use-in-production",
-  debug: true, // Enable debug mode to see more logs
+  secret: process.env.NEXTAUTH_SECRET,
 }
 
 const handler = NextAuth(authOptions)
