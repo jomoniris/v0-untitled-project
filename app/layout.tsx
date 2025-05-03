@@ -4,7 +4,7 @@ import { NextAuthProvider } from "@/components/providers/session-provider"
 
 export const metadata = {
   title: "Car Rental Admin",
-  description: "Admin panel for car rental management",
+  description: "Admin dashboard for car rental management",
     generator: 'v0.dev'
 }
 

@@ -1,21 +1,20 @@
 import NextAuth from "next-auth"
 import CredentialsProvider from "next-auth/providers/credentials"
-import bcryptjs from "bcryptjs"
 
-// Define hardcoded users for testing
+// Hardcoded users for testing - in a real app, these would come from a database
 const users = [
   {
-    id: "admin-user-id",
+    id: "admin-id",
     name: "Admin User",
     email: "admin@example.com",
-    password: "$2a$10$GQH.xI9oCY6aYB4OMOVVXOLXCjL7KO9nFAEMxukdcXMkiMWiRHvMi", // admin123
+    password: "admin123", // In a real app, this would be hashed
     role: "ADMIN",
   },
   {
-    id: "staff-user-id",
+    id: "staff-id",
     name: "Staff User",
     email: "staff@example.com",
-    password: "$2a$10$zGQ/4o0h0v0VC5.YV/KYVeRwJpOYccm9bd/1n8lfKyy0NLgQkFGlS", // staff123
+    password: "staff123", // In a real app, this would be hashed
     role: "STAFF",
   },
 ]
@@ -33,17 +32,18 @@ export const authOptions = {
           return null
         }
 
+        // Find user by email
         const user = users.find((user) => user.email === credentials.email)
         if (!user) {
           return null
         }
 
-        const isPasswordValid = await bcryptjs.compare(credentials.password, user.password)
-
-        if (!isPasswordValid) {
+        // Check password (in a real app, you would compare hashed passwords)
+        if (user.password !== credentials.password) {
           return null
         }
 
+        // Return user without password
         return {
           id: user.id,
           name: user.name,
@@ -71,14 +71,12 @@ export const authOptions = {
   },
   pages: {
     signIn: "/login",
-    error: "/login",
   },
   session: {
     strategy: "jwt",
     maxAge: 30 * 24 * 60 * 60, // 30 days
   },
-  secret: process.env.NEXTAUTH_SECRET,
-  debug: process.env.NODE_ENV === "development",
+  secret: process.env.NEXTAUTH_SECRET || "fallback-secret-do-not-use-in-production",
 }
 
 const handler = NextAuth(authOptions)
