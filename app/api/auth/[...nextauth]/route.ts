@@ -1,12 +1,16 @@
 import NextAuth from "next-auth"
 import CredentialsProvider from "next-auth/providers/credentials"
-import { compare } from "bcryptjs"
-import prisma from "@/lib/db"
 
+// Simplified auth options without database dependencies for initial setup
 export const authOptions = {
-  secret: process.env.NEXTAUTH_SECRET,
+  secret: process.env.NEXTAUTH_SECRET || "a-very-secure-secret-that-should-be-changed",
+  session: {
+    strategy: "jwt",
+    maxAge: 30 * 24 * 60 * 60, // 30 days
+  },
   pages: {
     signIn: "/login",
+    error: "/login",
   },
   providers: [
     CredentialsProvider({
@@ -16,37 +20,27 @@ export const authOptions = {
         password: { label: "Password", type: "password" },
       },
       async authorize(credentials) {
-        if (!credentials?.email || !credentials?.password) {
-          return null
-        }
-
-        try {
-          const user = await prisma.user.findUnique({
-            where: {
-              email: credentials.email,
-            },
-          })
-
-          if (!user || !user.hashedPassword) {
-            return null
-          }
-
-          const isPasswordValid = await compare(credentials.password, user.hashedPassword)
-
-          if (!isPasswordValid) {
-            return null
-          }
-
+        // Hardcoded admin user for testing
+        if (credentials?.email === "admin@example.com" && credentials?.password === "admin123") {
           return {
-            id: user.id,
-            email: user.email,
-            name: user.name,
-            role: user.role,
+            id: "admin-user-id",
+            name: "Admin User",
+            email: "admin@example.com",
+            role: "ADMIN",
           }
-        } catch (error) {
-          console.error("Auth error:", error)
-          return null
         }
+
+        // Hardcoded staff user for testing
+        if (credentials?.email === "staff@example.com" && credentials?.password === "staff123") {
+          return {
+            id: "staff-user-id",
+            name: "Staff User",
+            email: "staff@example.com",
+            role: "STAFF",
+          }
+        }
+
+        return null
       },
     }),
   ],
@@ -66,6 +60,7 @@ export const authOptions = {
       return session
     },
   },
+  debug: process.env.NODE_ENV === "development",
 }
 
 const handler = NextAuth(authOptions)

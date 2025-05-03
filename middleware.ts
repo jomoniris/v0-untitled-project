@@ -3,31 +3,29 @@ import { getToken } from "next-auth/jwt"
 import type { NextRequest } from "next/server"
 
 export async function middleware(request: NextRequest) {
-  const token = await getToken({ req: request, secret: process.env.NEXTAUTH_SECRET })
-  const isAuthenticated = !!token
+  const { pathname } = request.nextUrl
 
-  // Paths that require authentication
-  const authRoutes = ["/admin"]
-
-  // Check if the path starts with any of the auth routes
-  const isAuthRoute = authRoutes.some((route) => request.nextUrl.pathname.startsWith(route))
-
-  // If trying to access auth route but not authenticated, redirect to login
-  if (isAuthRoute && !isAuthenticated) {
-    const loginUrl = new URL("/login", request.url)
-    loginUrl.searchParams.set("callbackUrl", request.nextUrl.pathname)
-    return NextResponse.redirect(loginUrl)
+  // Bypass authentication for login page and API routes
+  if (pathname.startsWith("/login") || pathname.startsWith("/api/auth")) {
+    return NextResponse.next()
   }
 
-  // If already authenticated and trying to access login, redirect to admin
-  if (isAuthenticated && request.nextUrl.pathname === "/login") {
-    return NextResponse.redirect(new URL("/admin", request.url))
+  // Check if user is authenticated
+  const token = await getToken({
+    req: request,
+    secret: process.env.NEXTAUTH_SECRET,
+  })
+
+  // Redirect to login if not authenticated
+  if (!token && pathname.startsWith("/admin")) {
+    const url = new URL("/login", request.url)
+    url.searchParams.set("callbackUrl", encodeURI(request.url))
+    return NextResponse.redirect(url)
   }
 
   return NextResponse.next()
 }
 
-// See "Matching Paths" below to learn more
 export const config = {
   matcher: ["/admin/:path*", "/login"],
 }
