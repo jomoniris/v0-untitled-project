@@ -23,9 +23,14 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(url)
   }
 
+  // Redirect root to admin dashboard if authenticated
+  if (token && pathname === "/") {
+    return NextResponse.redirect(new URL("/admin/dashboard", request.url))
+  }
+
   return NextResponse.next()
 }
 
 export const config = {
-  matcher: ["/admin/:path*", "/login"],
+  matcher: ["/", "/admin/:path*", "/login"],
 }

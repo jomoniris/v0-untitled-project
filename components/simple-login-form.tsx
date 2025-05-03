@@ -37,8 +37,8 @@ export function SimpleLoginForm() {
         return
       }
 
-      router.push("/admin")
-      router.refresh()
+      // Force a hard navigation to ensure proper page reload with session
+      window.location.href = "/admin/dashboard"
     } catch (err) {
       console.error("Login error:", err)
       setError("An unexpected error occurred")
