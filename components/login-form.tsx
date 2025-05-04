@@ -4,29 +4,26 @@ import type React from "react"
 
 import { useState } from "react"
 import { signIn } from "next-auth/react"
-import { useSearchParams, useRouter } from "next/navigation"
+import { useRouter } from "next/navigation"
 
-export function LoginForm() {
+export default function LoginForm() {
   const router = useRouter()
-  const searchParams = useSearchParams()
-  const error = searchParams.get("error")
-
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
-  const [loginError, setLoginError] = useState(error ? "Invalid email or password" : "")
+  const [error, setError] = useState("")
   const [isLoading, setIsLoading] = useState(false)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
     if (!email || !password) {
-      setLoginError("Email and password are required")
+      setError("Email and password are required")
       return
     }
 
     try {
       setIsLoading(true)
-      setLoginError("")
+      setError("")
 
       const result = await signIn("credentials", {
         redirect: false,
@@ -35,25 +32,26 @@ export function LoginForm() {
       })
 
       if (result?.error) {
-        setLoginError("Invalid email or password")
+        setError("Invalid email or password")
         setIsLoading(false)
         return
       }
 
-      // Redirect to admin dashboard
+      // Use client-side navigation
       router.push("/admin")
+      router.refresh()
     } catch (err) {
       console.error("Login error:", err)
-      setLoginError("An unexpected error occurred")
+      setError("An unexpected error occurred")
       setIsLoading(false)
     }
   }
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
-      {loginError && (
+      {error && (
         <div className="rounded-md bg-red-50 p-4">
-          <div className="text-sm text-red-700">{loginError}</div>
+          <div className="text-sm text-red-700">{error}</div>
         </div>
       )}
 
@@ -101,6 +99,12 @@ export function LoginForm() {
         >
           {isLoading ? "Signing in..." : "Sign in"}
         </button>
+      </div>
+
+      <div className="text-sm text-center text-gray-600">
+        <a href="/forgot-password" className="hover:underline">
+          Forgot password?
+        </a>
       </div>
     </form>
   )

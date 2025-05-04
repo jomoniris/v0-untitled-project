@@ -75,6 +75,7 @@ export const authOptions = {
   pages: {
     signIn: "/login",
     error: "/login",
+    // This doesn't directly set the callbackUrl, but defines the sign-in page
   },
   session: {
     strategy: "jwt",
