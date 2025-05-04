@@ -28,161 +28,19 @@ import {
 import { toast } from "@/components/ui/use-toast"
 import { useRouter } from "next/navigation"
 import { Badge } from "@/components/ui/badge"
+import { deleteRentalRate, duplicateRentalRate, toggleRentalRateStatus } from "@/app/actions/rental-rate-actions"
 
-export function RentalRatesTable() {
+interface RentalRatesTableProps {
+  rates: any[]
+}
+
+export function RentalRatesTable({ rates }: RentalRatesTableProps) {
   const router = useRouter()
-  // Update the mock data to include policy values
-  const [rates, setRates] = useState([
-    {
-      id: "1",
-      rateName: "Summer 2023 Special",
-      pickupStartDate: "2023-06-01",
-      pickupEndDate: "2023-09-30",
-      rateZone: "NYC-DOWNTOWN",
-      bookingStartDate: "2023-05-01",
-      bookingEndDate: "2023-09-15",
-      active: true,
-      carGroupRates: [
-        {
-          groupId: "1",
-          groupName: "Economy",
-          milesPerDay: 150,
-          milesRate: 0.25,
-          depositRateCDW: 500,
-          excessPoliciesCDW: "Standard",
-          policyValueCDW: "Covers damage up to $1000",
-          depositRatePAI: 300,
-          excessPoliciesPAI: "Standard",
-          policyValuePAI: "Personal accident coverage",
-          depositRateSCDW: 200,
-          excessPoliciesSCDW: "Premium",
-          policyValueSCDW: "Super collision damage waiver",
-          depositRateCPP: 100,
-          excessPoliciesCPP: "Basic",
-          policyValueCPP: "Personal property protection",
-          deliveryCharges: 50,
-          dayRates: [
-            45, 43, 41, 39, 37, 35, 33, 31, 29, 27, 25, 23, 21, 19, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18,
-            18, 18, 18,
-          ],
-          included: true,
-        },
-        {
-          groupId: "2",
-          groupName: "Compact",
-          milesPerDay: 200,
-          milesRate: 0.2,
-          depositRateCDW: 600,
-          excessPoliciesCDW: "Premium",
-          policyValueCDW: "Premium coverage with $500 deductible",
-          depositRatePAI: 350,
-          excessPoliciesPAI: "Standard",
-          policyValuePAI: "Standard personal accident coverage",
-          depositRateSCDW: 250,
-          excessPoliciesSCDW: "Premium",
-          policyValueSCDW: "Full super collision coverage",
-          depositRateCPP: 120,
-          excessPoliciesCPP: "Standard",
-          policyValueCPP: "Standard property protection",
-          deliveryCharges: 60,
-          dayRates: [
-            55, 53, 51, 49, 47, 45, 43, 41, 39, 37, 35, 33, 31, 29, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28,
-            28, 28, 28,
-          ],
-          included: true,
-        },
-        {
-          groupId: "6",
-          groupName: "Premium",
-          milesPerDay: 250,
-          milesRate: 0.18,
-          depositRateCDW: 800,
-          excessPoliciesCDW: "Premium",
-          policyValueCDW: "Premium coverage with no deductible",
-          depositRatePAI: 450,
-          excessPoliciesPAI: "Premium",
-          policyValuePAI: "Premium personal accident coverage",
-          depositRateSCDW: 350,
-          excessPoliciesSCDW: "Premium",
-          policyValueSCDW: "Premium super collision coverage",
-          depositRateCPP: 150,
-          excessPoliciesCPP: "Premium",
-          policyValueCPP: "Premium property protection",
-          deliveryCharges: 75,
-          dayRates: [
-            85, 83, 81, 79, 77, 75, 73, 71, 69, 67, 65, 63, 61, 59, 58, 58, 58, 58, 58, 58, 58, 58, 58, 58, 58, 58, 58,
-            58, 58, 58,
-          ],
-          included: true,
-        },
-      ],
-    },
-    {
-      id: "2",
-      rateName: "Winter 2023 Promotion",
-      pickupStartDate: "2023-12-01",
-      pickupEndDate: "2024-02-28",
-      rateZone: "NYC-MIDTOWN",
-      bookingStartDate: "2023-11-01",
-      bookingEndDate: "2024-02-15",
-      active: true,
-      carGroupRates: [
-        {
-          groupId: "1",
-          groupName: "Economy",
-          milesPerDay: 120,
-          milesRate: 0.3,
-          depositRateCDW: 450,
-          excessPoliciesCDW: "Standard",
-          policyValueCDW: "Winter coverage with $750 deductible",
-          depositRatePAI: 250,
-          excessPoliciesPAI: "Standard",
-          policyValuePAI: "Winter personal accident coverage",
-          depositRateSCDW: 180,
-          excessPoliciesSCDW: "Standard",
-          policyValueSCDW: "Winter super collision coverage",
-          depositRateCPP: 90,
-          excessPoliciesCPP: "Basic",
-          policyValueCPP: "Basic winter property protection",
-          deliveryCharges: 45,
-          dayRates: [
-            40, 38, 36, 34, 32, 30, 28, 26, 24, 22, 20, 18, 16, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15,
-            15, 15, 15,
-          ],
-          included: true,
-        },
-        {
-          groupId: "8",
-          groupName: "SUV",
-          milesPerDay: 180,
-          milesRate: 0.25,
-          depositRateCDW: 700,
-          excessPoliciesCDW: "Premium",
-          policyValueCDW: "Premium winter coverage for SUVs",
-          depositRatePAI: 400,
-          excessPoliciesPAI: "Premium",
-          policyValuePAI: "Premium winter personal coverage",
-          depositRateSCDW: 300,
-          excessPoliciesSCDW: "Premium",
-          policyValueSCDW: "Premium winter collision coverage",
-          depositRateCPP: 130,
-          excessPoliciesCPP: "Standard",
-          policyValueCPP: "Standard winter property protection",
-          deliveryCharges: 65,
-          dayRates: [
-            95, 93, 91, 89, 87, 85, 83, 81, 79, 77, 75, 73, 71, 69, 68, 68, 68, 68, 68, 68, 68, 68, 68, 68, 68, 68, 68,
-            68, 68, 68,
-          ],
-          included: true,
-        },
-      ],
-    },
-  ])
-
   const [expandedRates, setExpandedRates] = useState<Record<string, boolean>>({})
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [rateToDelete, setRateToDelete] = useState<any>(null)
   const [isDeleting, setIsDeleting] = useState(false)
+  const [isProcessing, setIsProcessing] = useState(false)
 
   const toggleRateExpanded = (rateId: string) => {
     setExpandedRates((prev) => ({
@@ -197,16 +55,21 @@ export function RentalRatesTable() {
     setIsDeleting(true)
 
     try {
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 1000))
+      const result = await deleteRentalRate(rateToDelete.id)
 
-      // Remove the rate from the state
-      setRates(rates.filter((rate) => rate.id !== rateToDelete.id))
-
-      toast({
-        title: "Rate deleted",
-        description: `Rate "${rateToDelete.rateName}" has been deleted successfully.`,
-      })
+      if (result.error) {
+        toast({
+          title: "Error",
+          description: result.error,
+          variant: "destructive",
+        })
+      } else {
+        toast({
+          title: "Rate deleted",
+          description: result.message,
+        })
+        router.refresh()
+      }
     } catch (error) {
       console.error("Error deleting rate:", error)
       toast({
@@ -218,7 +81,6 @@ export function RentalRatesTable() {
       setIsDeleting(false)
       setDeleteDialogOpen(false)
       setRateToDelete(null)
-      router.refresh()
     }
   }
 
@@ -227,18 +89,26 @@ export function RentalRatesTable() {
     setDeleteDialogOpen(true)
   }
 
-  const toggleRateStatus = async (rateId: string, currentStatus: boolean) => {
+  const handleToggleRateStatus = async (rateId: string) => {
+    if (isProcessing) return
+
+    setIsProcessing(true)
     try {
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 500))
+      const result = await toggleRentalRateStatus(rateId)
 
-      // Update the rate status in the state
-      setRates(rates.map((rate) => (rate.id === rateId ? { ...rate, active: !currentStatus } : rate)))
-
-      toast({
-        title: "Status updated",
-        description: `Rate status has been ${!currentStatus ? "activated" : "deactivated"}.`,
-      })
+      if (result.error) {
+        toast({
+          title: "Error",
+          description: result.error,
+          variant: "destructive",
+        })
+      } else {
+        toast({
+          title: "Status updated",
+          description: result.message,
+        })
+        router.refresh()
+      }
     } catch (error) {
       console.error("Error updating rate status:", error)
       toast({
@@ -246,28 +116,31 @@ export function RentalRatesTable() {
         description: "Failed to update rate status. Please try again.",
         variant: "destructive",
       })
+    } finally {
+      setIsProcessing(false)
     }
   }
 
-  const duplicateRate = async (rate: any) => {
+  const handleDuplicateRate = async (rate: any) => {
+    if (isProcessing) return
+
+    setIsProcessing(true)
     try {
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 500))
+      const result = await duplicateRentalRate(rate.id)
 
-      // Create a duplicate with a new ID
-      const newRate = {
-        ...rate,
-        id: `${Number.parseInt(rate.id) + 100}`, // Just a simple way to create a new ID
-        rateName: `${rate.rateName} (Copy)`,
+      if (result.error) {
+        toast({
+          title: "Error",
+          description: result.error,
+          variant: "destructive",
+        })
+      } else {
+        toast({
+          title: "Rate duplicated",
+          description: result.message,
+        })
+        router.refresh()
       }
-
-      // Add the new rate to the state
-      setRates([...rates, newRate])
-
-      toast({
-        title: "Rate duplicated",
-        description: `Rate "${rate.rateName}" has been duplicated successfully.`,
-      })
     } catch (error) {
       console.error("Error duplicating rate:", error)
       toast({
@@ -275,7 +148,17 @@ export function RentalRatesTable() {
         description: "Failed to duplicate rate. Please try again.",
         variant: "destructive",
       })
+    } finally {
+      setIsProcessing(false)
     }
+  }
+
+  if (!rates || rates.length === 0) {
+    return (
+      <div className="text-center p-6 border rounded-md">
+        <p className="text-muted-foreground">No rental rates found.</p>
+      </div>
+    )
   }
 
   return (
@@ -316,7 +199,7 @@ export function RentalRatesTable() {
                     <Badge
                       variant={rate.active ? "default" : "secondary"}
                       className="cursor-pointer"
-                      onClick={() => toggleRateStatus(rate.id, rate.active)}
+                      onClick={() => handleToggleRateStatus(rate.id)}
                     >
                       {rate.active ? "Active" : "Inactive"}
                     </Badge>
@@ -344,11 +227,15 @@ export function RentalRatesTable() {
                             Edit
                           </Link>
                         </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => duplicateRate(rate)}>
+                        <DropdownMenuItem onClick={() => handleDuplicateRate(rate)} disabled={isProcessing}>
                           <Copy className="mr-2 h-4 w-4" />
                           Duplicate
                         </DropdownMenuItem>
-                        <DropdownMenuItem className="text-destructive" onClick={() => openDeleteDialog(rate)}>
+                        <DropdownMenuItem
+                          className="text-destructive"
+                          onClick={() => openDeleteDialog(rate)}
+                          disabled={isProcessing}
+                        >
                           <Trash2 className="mr-2 h-4 w-4" />
                           Delete
                         </DropdownMenuItem>
@@ -358,7 +245,7 @@ export function RentalRatesTable() {
                 </TableRow>
 
                 {/* Expanded car group rates */}
-                {expandedRates[rate.id] && (
+                {expandedRates[rate.id] && rate.carGroupRates && (
                   <TableRow>
                     <TableCell colSpan={7} className="p-0">
                       <div className="p-4 bg-muted/50">
@@ -377,16 +264,26 @@ export function RentalRatesTable() {
                           </TableHeader>
                           <TableBody>
                             {rate.carGroupRates
-                              .filter((group) => group.included)
-                              .map((carGroup) => (
+                              .filter((group: any) => group.included)
+                              .map((carGroup: any) => (
                                 <TableRow key={carGroup.groupId}>
                                   <TableCell className="font-medium">{carGroup.groupName}</TableCell>
                                   <TableCell>{carGroup.milesPerDay}</TableCell>
-                                  <TableCell>${carGroup.milesRate.toFixed(2)}</TableCell>
-                                  <TableCell>${carGroup.dayRates[0].toFixed(2)}</TableCell>
-                                  <TableCell>${carGroup.deliveryCharges.toFixed(2)}</TableCell>
-                                  <TableCell>${carGroup.depositRateCDW.toFixed(2)}</TableCell>
-                                  <TableCell>${carGroup.depositRatePAI.toFixed(2)}</TableCell>
+                                  <TableCell>${Number.parseFloat(carGroup.milesRate).toFixed(2)}</TableCell>
+                                  <TableCell>
+                                    {carGroup.ratePackage.type === "daily" && carGroup.ratePackage.dailyRates
+                                      ? `$${Number.parseFloat(carGroup.ratePackage.dailyRates[0]).toFixed(2)}`
+                                      : carGroup.ratePackage.type === "weekly" && carGroup.ratePackage.weeklyRate
+                                        ? `$${Number.parseFloat(carGroup.ratePackage.weeklyRate).toFixed(2)}/week`
+                                        : carGroup.ratePackage.type === "monthly" && carGroup.ratePackage.monthlyRate
+                                          ? `$${Number.parseFloat(carGroup.ratePackage.monthlyRate).toFixed(2)}/month`
+                                          : carGroup.ratePackage.type === "yearly" && carGroup.ratePackage.yearlyRate
+                                            ? `$${Number.parseFloat(carGroup.ratePackage.yearlyRate).toFixed(2)}/year`
+                                            : "N/A"}
+                                  </TableCell>
+                                  <TableCell>${Number.parseFloat(carGroup.deliveryCharges).toFixed(2)}</TableCell>
+                                  <TableCell>${Number.parseFloat(carGroup.depositRateCDW).toFixed(2)}</TableCell>
+                                  <TableCell>${Number.parseFloat(carGroup.depositRatePAI).toFixed(2)}</TableCell>
                                 </TableRow>
                               ))}
                           </TableBody>

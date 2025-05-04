@@ -4,8 +4,16 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Plus } from "lucide-react"
 import { RentalRatesTable } from "@/components/rental-rates-table"
+import { getRentalRates } from "@/app/actions/rental-rate-actions"
 
-export default function RentalRatesPage() {
+export default async function RentalRatesPage({
+  searchParams,
+}: {
+  searchParams: { tab?: string }
+}) {
+  const tab = searchParams.tab || "all"
+  const { rates, error } = await getRentalRates(tab)
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -23,20 +31,36 @@ export default function RentalRatesPage() {
         </div>
       </div>
 
-      <Tabs defaultValue="all" className="space-y-4">
+      <Tabs defaultValue={tab} className="space-y-4">
         <TabsList>
-          <TabsTrigger value="all">All Rates</TabsTrigger>
-          <TabsTrigger value="active">Active</TabsTrigger>
-          <TabsTrigger value="inactive">Inactive</TabsTrigger>
+          <TabsTrigger value="all" asChild>
+            <Link href="/admin/rate-and-policies/rental-rates?tab=all">All Rates</Link>
+          </TabsTrigger>
+          <TabsTrigger value="active" asChild>
+            <Link href="/admin/rate-and-policies/rental-rates?tab=active">Active</Link>
+          </TabsTrigger>
+          <TabsTrigger value="inactive" asChild>
+            <Link href="/admin/rate-and-policies/rental-rates?tab=inactive">Inactive</Link>
+          </TabsTrigger>
         </TabsList>
-        <TabsContent value="all" className="space-y-4">
+        <TabsContent value={tab} className="space-y-4">
           <Card>
             <CardHeader>
-              <CardTitle>All Rental Rates</CardTitle>
-              <CardDescription>View and manage all rental rates</CardDescription>
+              <CardTitle>
+                {tab === "active" ? "Active" : tab === "inactive" ? "Inactive" : "All"} Rental Rates
+              </CardTitle>
+              <CardDescription>
+                View and manage {tab === "active" ? "active" : tab === "inactive" ? "inactive" : "all"} rental rates
+              </CardDescription>
             </CardHeader>
             <CardContent>
-              <RentalRatesTable />
+              {error ? (
+                <div className="p-4 text-center">
+                  <p className="text-red-500">{error}</p>
+                </div>
+              ) : (
+                <RentalRatesTable rates={rates || []} />
+              )}
             </CardContent>
           </Card>
         </TabsContent>

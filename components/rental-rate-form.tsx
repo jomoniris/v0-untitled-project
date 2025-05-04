@@ -19,6 +19,7 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { ChevronDown, ChevronUp } from "lucide-react"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { createRentalRate, updateRentalRate } from "@/app/actions/rental-rate-actions"
 
 // Define rate package type
 const ratePackageSchema = z.object({
@@ -85,62 +86,20 @@ type RentalRateFormValues = z.infer<typeof rentalRateFormSchema>
 interface RentalRateFormProps {
   initialData?: Partial<RentalRateFormValues>
   isEditing?: boolean
+  rateId?: string
+  rateZones?: { id: string; code: string; name: string }[]
+  vehicleGroups?: { id: string; name: string }[]
+  additionalOptions?: { id: string; code: string; description: string; optionType: string }[]
 }
 
-// Available car groups
-const availableCarGroups = [
-  { id: "1", name: "Economy" },
-  { id: "2", name: "Compact" },
-  { id: "3", name: "Midsize" },
-  { id: "4", name: "Standard" },
-  { id: "5", name: "Fullsize" },
-  { id: "6", name: "Premium" },
-  { id: "7", name: "Luxury" },
-  { id: "8", name: "SUV" },
-  { id: "9", name: "Minivan" },
-  { id: "10", name: "Van" },
-]
-
-// Add the mock additional options data
-const additionalOptions = [
-  {
-    id: "1",
-    code: "GPS",
-    description: "GPS Navigation System",
-    optionType: "Equipment",
-    calculationType: "Daily",
-  },
-  {
-    id: "2",
-    code: "WIFI",
-    description: "Mobile WiFi Hotspot",
-    optionType: "Equipment",
-    calculationType: "Daily",
-  },
-  {
-    id: "3",
-    code: "CSEAT",
-    description: "Child Safety Seat",
-    optionType: "Equipment",
-    calculationType: "Rental",
-  },
-  {
-    id: "4",
-    code: "INSUR",
-    description: "Additional Insurance",
-    optionType: "Insurance",
-    calculationType: "Daily",
-  },
-  {
-    id: "5",
-    code: "ROADSIDE",
-    description: "Roadside Assistance",
-    optionType: "Service",
-    calculationType: "Rental",
-  },
-]
-
-export function RentalRateForm({ initialData, isEditing = false }: RentalRateFormProps) {
+export function RentalRateForm({
+  initialData,
+  isEditing = false,
+  rateId,
+  rateZones = [],
+  vehicleGroups = [],
+  additionalOptions = [],
+}: RentalRateFormProps) {
   const router = useRouter()
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({})
@@ -148,8 +107,8 @@ export function RentalRateForm({ initialData, isEditing = false }: RentalRateFor
   const [activeTab, setActiveTab] = useState<string>("rate-info")
 
   // Initialize car group rates with default values
-  const defaultCarGroupRates = availableCarGroups.map((group) => ({
-    groupId: group.id,
+  const defaultCarGroupRates = vehicleGroups.map((group) => ({
+    groupId: group.id.toString(),
     groupName: group.name,
     milesPerDay: 0,
     milesRate: 0,
@@ -173,8 +132,8 @@ export function RentalRateForm({ initialData, isEditing = false }: RentalRateFor
   }))
 
   // Initialize additional options with default values
-  const defaultAdditionalOptions = additionalOptions.map((option) => ({
-    id: option.id,
+  const defaultAdditionalOptionsData = additionalOptions.map((option) => ({
+    id: option.id.toString(),
     code: option.code,
     description: option.description,
     included: false,
@@ -184,14 +143,14 @@ export function RentalRateForm({ initialData, isEditing = false }: RentalRateFor
   // Default form values
   const defaultValues: Partial<RentalRateFormValues> = {
     rateName: "",
-    pickupStartDate: "",
-    pickupEndDate: "",
+    pickupStartDate: new Date().toISOString().split("T")[0],
+    pickupEndDate: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString().split("T")[0],
     rateZone: "",
-    bookingStartDate: "",
-    bookingEndDate: "",
+    bookingStartDate: new Date().toISOString().split("T")[0],
+    bookingEndDate: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString().split("T")[0],
     active: true,
     carGroupRates: defaultCarGroupRates,
-    additionalOptions: defaultAdditionalOptions,
+    additionalOptions: defaultAdditionalOptionsData,
     ...initialData,
   }
 
@@ -205,14 +164,14 @@ export function RentalRateForm({ initialData, isEditing = false }: RentalRateFor
     const initialExpandedState: Record<string, boolean> = {}
     const initialDayRatesState: Record<string, boolean> = {}
 
-    availableCarGroups.forEach((group) => {
+    vehicleGroups.forEach((group) => {
       initialExpandedState[group.id] = false
       initialDayRatesState[group.id] = false
     })
 
     setExpandedGroups(initialExpandedState)
     setExpandedDayRates(initialDayRatesState)
-  }, [])
+  }, [vehicleGroups])
 
   const toggleGroupExpanded = (groupId: string) => {
     setExpandedGroups((prev) => ({
@@ -249,22 +208,51 @@ export function RentalRateForm({ initialData, isEditing = false }: RentalRateFor
     setIsSubmitting(true)
 
     try {
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 1000))
+      // Create FormData object
+      const formData = new FormData()
 
-      console.log("Form submitted:", data)
+      // Add basic rate information
+      formData.append("rateName", data.rateName)
+      formData.append("pickupStartDate", data.pickupStartDate)
+      formData.append("pickupEndDate", data.pickupEndDate)
+      formData.append("rateZone", data.rateZone)
+      formData.append("bookingStartDate", data.bookingStartDate)
+      formData.append("bookingEndDate", data.bookingEndDate)
+      formData.append("active", data.active.toString())
 
-      // Show success message
-      toast({
-        title: isEditing ? "Rate updated" : "Rate created",
-        description: isEditing
-          ? `Rate "${data.rateName}" has been updated successfully.`
-          : `Rate "${data.rateName}" has been created successfully.`,
-      })
+      // Add car group rates as JSON
+      formData.append("carGroupRates", JSON.stringify(data.carGroupRates))
 
-      // Redirect back to rates list
-      router.push("/admin/rate-and-policies/rental-rates")
-      router.refresh()
+      // Add additional options as JSON
+      formData.append("additionalOptions", JSON.stringify(data.additionalOptions))
+
+      let result
+
+      if (isEditing && rateId) {
+        // Update existing rate
+        result = await updateRentalRate(rateId, formData)
+      } else {
+        // Create new rate
+        result = await createRentalRate(formData)
+      }
+
+      if (result.error) {
+        toast({
+          title: "Error",
+          description: result.error,
+          variant: "destructive",
+        })
+      } else {
+        // Show success message
+        toast({
+          title: isEditing ? "Rate updated" : "Rate created",
+          description: result.message,
+        })
+
+        // Redirect back to rates list
+        router.push("/admin/rate-and-policies/rental-rates")
+        router.refresh()
+      }
     } catch (error) {
       console.error("Error submitting form:", error)
       toast({
@@ -332,11 +320,11 @@ export function RentalRateForm({ initialData, isEditing = false }: RentalRateFor
                                 </SelectTrigger>
                               </FormControl>
                               <SelectContent>
-                                <SelectItem value="NYC-DOWNTOWN">NYC Downtown</SelectItem>
-                                <SelectItem value="NYC-MIDTOWN">NYC Midtown</SelectItem>
-                                <SelectItem value="NYC-AIRPORT">NYC Airport</SelectItem>
-                                <SelectItem value="LA-DOWNTOWN">LA Downtown</SelectItem>
-                                <SelectItem value="CHI-NORTH">Chicago North</SelectItem>
+                                {rateZones.map((zone) => (
+                                  <SelectItem key={zone.id} value={zone.code}>
+                                    {zone.name}
+                                  </SelectItem>
+                                ))}
                               </SelectContent>
                             </Select>
                             <FormMessage />
@@ -460,7 +448,7 @@ export function RentalRateForm({ initialData, isEditing = false }: RentalRateFor
                                     value={carGroup.milesPerDay}
                                     onChange={(e) => {
                                       const updatedRates = [...form.getValues().carGroupRates]
-                                      updatedRates[index].milesPerDay = e.target.valueAsNumber
+                                      updatedRates[index].milesPerDay = e.target.valueAsNumber || 0
                                       form.setValue("carGroupRates", updatedRates)
                                     }}
                                     className="w-20"
@@ -474,7 +462,7 @@ export function RentalRateForm({ initialData, isEditing = false }: RentalRateFor
                                     value={carGroup.milesRate}
                                     onChange={(e) => {
                                       const updatedRates = [...form.getValues().carGroupRates]
-                                      updatedRates[index].milesRate = e.target.valueAsNumber
+                                      updatedRates[index].milesRate = e.target.valueAsNumber || 0
                                       form.setValue("carGroupRates", updatedRates)
                                     }}
                                     className="w-20"
@@ -536,7 +524,7 @@ export function RentalRateForm({ initialData, isEditing = false }: RentalRateFor
                                                 value={carGroup.depositRateCDW}
                                                 onChange={(e) => {
                                                   const updatedRates = [...form.getValues().carGroupRates]
-                                                  updatedRates[index].depositRateCDW = e.target.valueAsNumber
+                                                  updatedRates[index].depositRateCDW = e.target.valueAsNumber || 0
                                                   form.setValue("carGroupRates", updatedRates)
                                                 }}
                                               />
@@ -550,7 +538,7 @@ export function RentalRateForm({ initialData, isEditing = false }: RentalRateFor
                                                 value={carGroup.policyValueCDW}
                                                 onChange={(e) => {
                                                   const updatedRates = [...form.getValues().carGroupRates]
-                                                  updatedRates[index].policyValueCDW = e.target.valueAsNumber
+                                                  updatedRates[index].policyValueCDW = e.target.valueAsNumber || 0
                                                   form.setValue("carGroupRates", updatedRates)
                                                 }}
                                               />
@@ -565,7 +553,7 @@ export function RentalRateForm({ initialData, isEditing = false }: RentalRateFor
                                                 value={carGroup.depositRatePAI}
                                                 onChange={(e) => {
                                                   const updatedRates = [...form.getValues().carGroupRates]
-                                                  updatedRates[index].depositRatePAI = e.target.valueAsNumber
+                                                  updatedRates[index].depositRatePAI = e.target.valueAsNumber || 0
                                                   form.setValue("carGroupRates", updatedRates)
                                                 }}
                                               />
@@ -579,7 +567,7 @@ export function RentalRateForm({ initialData, isEditing = false }: RentalRateFor
                                                 value={carGroup.policyValuePAI}
                                                 onChange={(e) => {
                                                   const updatedRates = [...form.getValues().carGroupRates]
-                                                  updatedRates[index].policyValuePAI = e.target.valueAsNumber
+                                                  updatedRates[index].policyValuePAI = e.target.valueAsNumber || 0
                                                   form.setValue("carGroupRates", updatedRates)
                                                 }}
                                               />
@@ -594,7 +582,7 @@ export function RentalRateForm({ initialData, isEditing = false }: RentalRateFor
                                                 value={carGroup.depositRateSCDW}
                                                 onChange={(e) => {
                                                   const updatedRates = [...form.getValues().carGroupRates]
-                                                  updatedRates[index].depositRateSCDW = e.target.valueAsNumber
+                                                  updatedRates[index].depositRateSCDW = e.target.valueAsNumber || 0
                                                   form.setValue("carGroupRates", updatedRates)
                                                 }}
                                               />
@@ -608,7 +596,7 @@ export function RentalRateForm({ initialData, isEditing = false }: RentalRateFor
                                                 value={carGroup.policyValueSCDW}
                                                 onChange={(e) => {
                                                   const updatedRates = [...form.getValues().carGroupRates]
-                                                  updatedRates[index].policyValueSCDW = e.target.valueAsNumber
+                                                  updatedRates[index].policyValueSCDW = e.target.valueAsNumber || 0
                                                   form.setValue("carGroupRates", updatedRates)
                                                 }}
                                               />
@@ -623,7 +611,7 @@ export function RentalRateForm({ initialData, isEditing = false }: RentalRateFor
                                                 value={carGroup.depositRateCPP}
                                                 onChange={(e) => {
                                                   const updatedRates = [...form.getValues().carGroupRates]
-                                                  updatedRates[index].depositRateCPP = e.target.valueAsNumber
+                                                  updatedRates[index].depositRateCPP = e.target.valueAsNumber || 0
                                                   form.setValue("carGroupRates", updatedRates)
                                                 }}
                                               />
@@ -637,7 +625,7 @@ export function RentalRateForm({ initialData, isEditing = false }: RentalRateFor
                                                 value={carGroup.policyValueCPP}
                                                 onChange={(e) => {
                                                   const updatedRates = [...form.getValues().carGroupRates]
-                                                  updatedRates[index].policyValueCPP = e.target.valueAsNumber
+                                                  updatedRates[index].policyValueCPP = e.target.valueAsNumber || 0
                                                   form.setValue("carGroupRates", updatedRates)
                                                 }}
                                               />
@@ -656,7 +644,7 @@ export function RentalRateForm({ initialData, isEditing = false }: RentalRateFor
                                               value={carGroup.deliveryCharges}
                                               onChange={(e) => {
                                                 const updatedRates = [...form.getValues().carGroupRates]
-                                                updatedRates[index].deliveryCharges = e.target.valueAsNumber
+                                                updatedRates[index].deliveryCharges = e.target.valueAsNumber || 0
                                                 form.setValue("carGroupRates", updatedRates)
                                               }}
                                             />
@@ -698,7 +686,7 @@ export function RentalRateForm({ initialData, isEditing = false }: RentalRateFor
                                                           updatedRates[index].ratePackage.dailyRates = Array(30).fill(0)
                                                         }
                                                         updatedRates[index].ratePackage.dailyRates![dayIndex] =
-                                                          e.target.valueAsNumber
+                                                          e.target.valueAsNumber || 0
                                                         form.setValue("carGroupRates", updatedRates)
                                                       }}
                                                     />
@@ -721,7 +709,7 @@ export function RentalRateForm({ initialData, isEditing = false }: RentalRateFor
                                                           updatedRates[index].ratePackage.dailyRates = Array(30).fill(0)
                                                         }
                                                         updatedRates[index].ratePackage.dailyRates![dayIndex] =
-                                                          e.target.valueAsNumber
+                                                          e.target.valueAsNumber || 0
                                                         form.setValue("carGroupRates", updatedRates)
                                                       }}
                                                     />
@@ -742,7 +730,7 @@ export function RentalRateForm({ initialData, isEditing = false }: RentalRateFor
                                               value={carGroup.ratePackage.weeklyRate || 0}
                                               onChange={(e) => {
                                                 const updatedRates = [...form.getValues().carGroupRates]
-                                                updatedRates[index].ratePackage.weeklyRate = e.target.valueAsNumber
+                                                updatedRates[index].ratePackage.weeklyRate = e.target.valueAsNumber || 0
                                                 form.setValue("carGroupRates", updatedRates)
                                               }}
                                               className="mt-1"
@@ -760,7 +748,8 @@ export function RentalRateForm({ initialData, isEditing = false }: RentalRateFor
                                               value={carGroup.ratePackage.monthlyRate || 0}
                                               onChange={(e) => {
                                                 const updatedRates = [...form.getValues().carGroupRates]
-                                                updatedRates[index].ratePackage.monthlyRate = e.target.valueAsNumber
+                                                updatedRates[index].ratePackage.monthlyRate =
+                                                  e.target.valueAsNumber || 0
                                                 form.setValue("carGroupRates", updatedRates)
                                               }}
                                               className="mt-1"
@@ -778,7 +767,7 @@ export function RentalRateForm({ initialData, isEditing = false }: RentalRateFor
                                               value={carGroup.ratePackage.yearlyRate || 0}
                                               onChange={(e) => {
                                                 const updatedRates = [...form.getValues().carGroupRates]
-                                                updatedRates[index].ratePackage.yearlyRate = e.target.valueAsNumber
+                                                updatedRates[index].ratePackage.yearlyRate = e.target.valueAsNumber || 0
                                                 form.setValue("carGroupRates", updatedRates)
                                               }}
                                               className="mt-1"
@@ -814,41 +803,36 @@ export function RentalRateForm({ initialData, isEditing = false }: RentalRateFor
                           <TableHead className="w-[100px]">Code</TableHead>
                           <TableHead>Description</TableHead>
                           <TableHead>Option Type</TableHead>
-                          <TableHead>Calculation</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {additionalOptions.map((option, index) => {
-                          const formOption = form.watch("additionalOptions")[index]
-                          return (
-                            <TableRow key={option.id}>
-                              <TableCell>
-                                <Checkbox
-                                  checked={formOption?.included}
-                                  onCheckedChange={(checked) => {
-                                    const updatedOptions = [...form.getValues().additionalOptions]
-                                    updatedOptions[index].included = !!checked
-                                    form.setValue("additionalOptions", updatedOptions)
-                                  }}
-                                />
-                              </TableCell>
-                              <TableCell>
-                                <Checkbox
-                                  checked={formOption?.customerPays}
-                                  onCheckedChange={(checked) => {
-                                    const updatedOptions = [...form.getValues().additionalOptions]
-                                    updatedOptions[index].customerPays = !!checked
-                                    form.setValue("additionalOptions", updatedOptions)
-                                  }}
-                                />
-                              </TableCell>
-                              <TableCell>{option.code}</TableCell>
-                              <TableCell>{option.description}</TableCell>
-                              <TableCell>{option.optionType}</TableCell>
-                              <TableCell>{option.calculationType}</TableCell>
-                            </TableRow>
-                          )
-                        })}
+                        {form.watch("additionalOptions").map((option, index) => (
+                          <TableRow key={option.id}>
+                            <TableCell>
+                              <Checkbox
+                                checked={option.included}
+                                onCheckedChange={(checked) => {
+                                  const updatedOptions = [...form.getValues().additionalOptions]
+                                  updatedOptions[index].included = !!checked
+                                  form.setValue("additionalOptions", updatedOptions)
+                                }}
+                              />
+                            </TableCell>
+                            <TableCell>
+                              <Checkbox
+                                checked={option.customerPays}
+                                onCheckedChange={(checked) => {
+                                  const updatedOptions = [...form.getValues().additionalOptions]
+                                  updatedOptions[index].customerPays = !!checked
+                                  form.setValue("additionalOptions", updatedOptions)
+                                }}
+                              />
+                            </TableCell>
+                            <TableCell>{option.code}</TableCell>
+                            <TableCell>{option.description}</TableCell>
+                            <TableCell>{additionalOptions[index]?.optionType || "N/A"}</TableCell>
+                          </TableRow>
+                        ))}
                       </TableBody>
                     </Table>
                   </div>
