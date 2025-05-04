@@ -4,10 +4,11 @@ import type React from "react"
 
 import { useSession } from "next-auth/react"
 import { useRouter } from "next/navigation"
-import { useEffect } from "react"
+import { useEffect, useState } from "react"
 import Link from "next/link"
-import { LogOut, Menu, User } from "lucide-react"
+import { LogOut, Menu, User, X } from "lucide-react"
 import { signOut } from "next-auth/react"
+import { SidebarNav } from "@/components/sidebar-nav"
 
 export default function AdminLayout({
   children,
@@ -16,6 +17,7 @@ export default function AdminLayout({
 }) {
   const { data: session, status } = useSession()
   const router = useRouter()
+  const [sidebarOpen, setSidebarOpen] = useState(false)
 
   useEffect(() => {
     if (status === "unauthenticated") {
@@ -50,7 +52,9 @@ export default function AdminLayout({
       <header className="bg-white shadow-sm">
         <div className="flex items-center justify-between px-4 py-3">
           <div className="flex items-center">
-            <Menu className="h-6 w-6 mr-3 md:hidden" />
+            <button onClick={() => setSidebarOpen(!sidebarOpen)} className="md:hidden mr-3">
+              {sidebarOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
+            </button>
             <Link href="/admin" className="text-xl font-bold">
               Car Rental Admin
             </Link>
@@ -76,52 +80,23 @@ export default function AdminLayout({
 
       {/* Main content */}
       <div className="flex">
-        {/* Sidebar */}
+        {/* Mobile Sidebar */}
+        {sidebarOpen && (
+          <div className="fixed inset-0 z-40 md:hidden">
+            <div className="fixed inset-0 bg-black/20" onClick={() => setSidebarOpen(false)}></div>
+            <div className="fixed inset-y-0 left-0 w-64 bg-white shadow-lg z-50 overflow-y-auto">
+              <div className="p-4">
+                <SidebarNav />
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Desktop Sidebar */}
         <aside className="hidden md:block w-64 bg-white shadow-sm h-[calc(100vh-4rem)] overflow-y-auto">
-          <nav className="p-4">
-            <ul className="space-y-2">
-              <li>
-                <Link href="/admin" className="block px-4 py-2 rounded-md hover:bg-gray-100">
-                  Dashboard
-                </Link>
-              </li>
-              <li>
-                <Link href="/admin/vehicles" className="block px-4 py-2 rounded-md hover:bg-gray-100">
-                  Vehicles
-                </Link>
-              </li>
-              <li>
-                <Link href="/admin/rentals" className="block px-4 py-2 rounded-md hover:bg-gray-100">
-                  Rentals
-                </Link>
-              </li>
-              <li>
-                <Link href="/admin/customers" className="block px-4 py-2 rounded-md hover:bg-gray-100">
-                  Customers
-                </Link>
-              </li>
-              <li>
-                <Link href="/admin/rate-and-policies" className="block px-4 py-2 rounded-md hover:bg-gray-100">
-                  Rates & Policies
-                </Link>
-              </li>
-              <li>
-                <Link href="/admin/fleet" className="block px-4 py-2 rounded-md hover:bg-gray-100">
-                  Fleet Management
-                </Link>
-              </li>
-              <li>
-                <Link href="/admin/company" className="block px-4 py-2 rounded-md hover:bg-gray-100">
-                  Company
-                </Link>
-              </li>
-              <li>
-                <Link href="/admin/reports" className="block px-4 py-2 rounded-md hover:bg-gray-100">
-                  Reports
-                </Link>
-              </li>
-            </ul>
-          </nav>
+          <div className="p-4">
+            <SidebarNav />
+          </div>
         </aside>
 
         {/* Content */}

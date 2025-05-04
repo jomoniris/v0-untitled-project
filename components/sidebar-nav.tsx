@@ -38,8 +38,28 @@ export function SidebarNav({ className }: SidebarNavProps) {
           href: "/admin/vehicles",
         },
         {
+          title: "Vehicle Groups",
+          href: "/admin/company/fleet/vehicle-group",
+        },
+        {
           title: "Non-Revenue Time",
           href: "/admin/fleet/nrt",
+        },
+        {
+          title: "Non-Revenue Movement",
+          href: "/admin/fleet/non-revenue-movement",
+        },
+        {
+          title: "Tolls Management",
+          href: "/admin/fleet/tolls",
+        },
+        {
+          title: "Traffic Fine",
+          href: "/admin/fleet/traffic-fine",
+        },
+        {
+          title: "Parking Management",
+          href: "/admin/fleet/parking",
         },
         {
           title: "Utilization",
@@ -55,6 +75,23 @@ export function SidebarNav({ className }: SidebarNavProps) {
       title: "Finance",
       href: "/admin/finance",
       icon: <DollarSign className="mr-2 h-4 w-4" />,
+      submenu: [
+        {
+          title: "Additional Options",
+          href: "/admin/company/finance/additional-options",
+        },
+      ],
+    },
+    {
+      title: "Rate & Policies",
+      href: "/admin/rate-and-policies",
+      icon: <FileText className="mr-2 h-4 w-4" />,
+      submenu: [
+        {
+          title: "Rental Rates",
+          href: "/admin/rate-and-policies/rental-rates",
+        },
+      ],
     },
     {
       title: "Reports",
@@ -65,6 +102,20 @@ export function SidebarNav({ className }: SidebarNavProps) {
       title: "Company",
       href: "/admin/company",
       icon: <Building className="mr-2 h-4 w-4" />,
+      submenu: [
+        {
+          title: "Locations",
+          href: "/admin/company/locations",
+        },
+        {
+          title: "Staff",
+          href: "/admin/company/staff",
+        },
+        {
+          title: "Settings",
+          href: "/admin/company/settings",
+        },
+      ],
     },
   ]
 

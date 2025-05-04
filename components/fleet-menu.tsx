@@ -5,7 +5,7 @@ import type React from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { cn } from "@/lib/utils"
-import { Settings, Clock, BarChart3, Layers } from "lucide-react"
+import { Settings, Clock, BarChart3, Layers, Car, MapPin, AlertTriangle } from "lucide-react"
 
 interface FleetMenuItemProps {
   href: string
@@ -38,7 +38,7 @@ export function FleetMenu() {
       <div className="flex flex-wrap gap-2">
         <FleetMenuItem
           href="/admin/vehicles"
-          icon={<Layers className="h-4 w-4" />}
+          icon={<Car className="h-4 w-4" />}
           title="Vehicles"
           active={pathname === "/admin/vehicles"}
         />
@@ -53,6 +53,30 @@ export function FleetMenu() {
           icon={<Clock className="h-4 w-4" />}
           title="Non-Revenue Time"
           active={pathname === "/admin/fleet/nrt"}
+        />
+        <FleetMenuItem
+          href="/admin/fleet/non-revenue-movement"
+          icon={<Car className="h-4 w-4" />}
+          title="Non-Revenue Movement"
+          active={pathname === "/admin/fleet/non-revenue-movement"}
+        />
+        <FleetMenuItem
+          href="/admin/fleet/tolls"
+          icon={<MapPin className="h-4 w-4" />}
+          title="Tolls"
+          active={pathname === "/admin/fleet/tolls"}
+        />
+        <FleetMenuItem
+          href="/admin/fleet/traffic-fine"
+          icon={<AlertTriangle className="h-4 w-4" />}
+          title="Traffic Fines"
+          active={pathname === "/admin/fleet/traffic-fine"}
+        />
+        <FleetMenuItem
+          href="/admin/fleet/parking"
+          icon={<MapPin className="h-4 w-4" />}
+          title="Parking"
+          active={pathname === "/admin/fleet/parking"}
         />
         <FleetMenuItem
           href="/admin/fleet/utilization"
