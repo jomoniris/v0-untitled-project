@@ -5,16 +5,18 @@ import { useEffect } from "react"
 import { useRouter } from "next/navigation"
 
 export default function Home() {
-  const { status } = useSession()
+  const { data: session, status } = useSession()
   const router = useRouter()
 
   useEffect(() => {
     if (status === "authenticated") {
       console.log("User is authenticated on home page, redirecting to /admin")
-      router.push("/admin")
+      // Use window.location for a hard redirect
+      window.location.href = "/admin"
     } else if (status === "unauthenticated") {
       console.log("User is unauthenticated on home page, redirecting to /login")
-      router.push("/login")
+      // Use window.location for a hard redirect
+      window.location.href = "/login"
     }
   }, [status, router])
 
@@ -23,6 +25,7 @@ export default function Home() {
       <div className="text-center">
         <div className="w-16 h-16 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto"></div>
         <p className="mt-4 text-gray-600">Redirecting...</p>
+        <p className="mt-2 text-sm text-gray-500">Authentication status: {status}</p>
       </div>
     </div>
   )
