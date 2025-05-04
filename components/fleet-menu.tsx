@@ -3,7 +3,6 @@
 import type React from "react"
 
 import Link from "next/link"
-import { usePathname } from "next/navigation"
 import { cn } from "@/lib/utils"
 import { Settings, Clock, BarChart3, Layers, Car, MapPin, AlertTriangle } from "lucide-react"
 
@@ -30,7 +29,7 @@ function FleetMenuItem({ href, icon, title, active }: FleetMenuItemProps) {
 }
 
 export function FleetMenu() {
-  const pathname = usePathname()
+  const pathname = typeof window !== "undefined" ? window.location.pathname : ""
 
   return (
     <div className="bg-white rounded-lg shadow-sm border p-4 mb-6">
