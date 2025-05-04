@@ -4,10 +4,12 @@ const path = require("path")
 console.log("Pushing Prisma schema to database...")
 
 try {
-  // Run prisma db push
-  execSync("npx prisma db push", {
+  // Explicitly specify the schema path
+  const schemaPath = path.join(process.cwd(), "prisma", "schema.prisma")
+
+  execSync(`npx prisma db push --schema="${schemaPath}" --accept-data-loss`, {
     stdio: "inherit",
-    cwd: path.resolve(__dirname, ".."),
+    env: { ...process.env },
   })
 
   console.log("Schema pushed successfully!")

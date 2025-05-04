@@ -13,7 +13,7 @@ importers:
         version: 0.39.0(nodemailer@7.0.0)
       '@hookform/resolvers':
         specifier: latest
-        version: 5.0.1(react-hook-form@7.56.1(react@19.0.0))
+        version: 5.0.1(react-hook-form@7.56.2(react@19.0.0))
       '@next-auth/prisma-adapter':
         specifier: latest
         version: 1.0.7(@prisma/client@6.7.0(prisma@6.7.0(typescript@5.0.2))(typescript@5.0.2))(next-auth@4.24.11(@auth/core@0.39.0(nodemailer@7.0.0))(next@15.2.4(react-dom@19.0.0(react@19.0.0))(react@19.0.0))(nodemailer@7.0.0)(react-dom@19.0.0(react@19.0.0))(react@19.0.0))
@@ -163,7 +163,7 @@ importers:
         version: 19.0.0(react@19.0.0)
       react-hook-form:
         specifier: latest
-        version: 7.56.1(react@19.0.0)
+        version: 7.56.2(react@19.0.0)
       react-resizable-panels:
         specifier: ^2.1.7
         version: 2.1.7(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
@@ -2303,8 +2303,8 @@ packages:
     peerDependencies:
       react: ^19.0.0
 
-  react-hook-form@7.56.1:
-    resolution: {integrity: sha512-qWAVokhSpshhcEuQDSANHx3jiAEFzu2HAaaQIzi/r9FNPm1ioAvuJSD4EuZzWd7Al7nTRKcKPnBKO7sRn+zavQ==}
+  react-hook-form@7.56.2:
+    resolution: {integrity: sha512-vpfuHuQMF/L6GpuQ4c3ZDo+pRYxIi40gQqsCmmfUBwm+oqvBhKhwghCuj2o00YCgSfU6bR9KC/xnQGWm3Gr08A==}
     engines: {node: '>=18.0.0'}
     peerDependencies:
       react: ^16.8.0 || ^17 || ^18 || ^19
@@ -2719,10 +2719,10 @@ snapshots:
 
   '@floating-ui/utils@0.2.9': {}
 
-  '@hookform/resolvers@5.0.1(react-hook-form@7.56.1(react@19.0.0))':
+  '@hookform/resolvers@5.0.1(react-hook-form@7.56.2(react@19.0.0))':
     dependencies:
       '@standard-schema/utils': 0.3.0
-      react-hook-form: 7.56.1(react@19.0.0)
+      react-hook-form: 7.56.2(react@19.0.0)
 
   '@img/sharp-darwin-arm64@0.33.5':
     optionalDependencies:
@@ -4553,7 +4553,7 @@ snapshots:
       react: 19.0.0
       scheduler: 0.25.0
 
-  react-hook-form@7.56.1(react@19.0.0):
+  react-hook-form@7.56.2(react@19.0.0):
     dependencies:
       react: 19.0.0
 
