@@ -4,10 +4,13 @@ import type React from "react"
 
 import { useState } from "react"
 import { signIn } from "next-auth/react"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 
 export default function LoginForm() {
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const callbackUrl = searchParams.get("callbackUrl") || "/admin"
+
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [error, setError] = useState("")
@@ -29,6 +32,7 @@ export default function LoginForm() {
         redirect: false,
         email,
         password,
+        callbackUrl,
       })
 
       if (result?.error) {
@@ -37,9 +41,8 @@ export default function LoginForm() {
         return
       }
 
-      // Use client-side navigation
-      router.push("/admin")
-      router.refresh()
+      // Explicitly redirect to the callback URL or default admin page
+      window.location.href = callbackUrl
     } catch (err) {
       console.error("Login error:", err)
       setError("An unexpected error occurred")
@@ -99,12 +102,6 @@ export default function LoginForm() {
         >
           {isLoading ? "Signing in..." : "Sign in"}
         </button>
-      </div>
-
-      <div className="text-sm text-center text-gray-600">
-        <a href="/forgot-password" className="hover:underline">
-          Forgot password?
-        </a>
       </div>
     </form>
   )

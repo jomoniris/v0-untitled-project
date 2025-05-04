@@ -20,9 +20,23 @@ export async function middleware(request: NextRequest) {
     }
   }
 
+  // Check if user is already logged in and trying to access login page
+  if (pathname === "/login") {
+    const token = await getToken({
+      req: request,
+      secret: process.env.NEXTAUTH_SECRET,
+    })
+
+    // If logged in and on login page, redirect to admin
+    if (token) {
+      const callbackUrl = request.nextUrl.searchParams.get("callbackUrl") || "/admin"
+      return NextResponse.redirect(new URL(callbackUrl, request.url))
+    }
+  }
+
   return NextResponse.next()
 }
 
 export const config = {
-  matcher: ["/admin/:path*"],
+  matcher: ["/admin/:path*", "/login"],
 }
