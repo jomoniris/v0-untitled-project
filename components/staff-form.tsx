@@ -9,48 +9,34 @@ import { Input } from "@/components/ui/input"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { MultiSelectBasic } from "@/components/ui/multi-select-basic"
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { useRouter } from "next/navigation"
 import { useToast } from "@/components/ui/use-toast"
+import {
+  createStaffMember,
+  updateStaffMember,
+  getLocationsForDropdown,
+  getStaffForDropdown,
+} from "@/app/actions/staff-actions"
 
-// Mock data for locations
-const locations = [
-  { label: "Downtown Office", value: "downtown" },
-  { label: "Airport Terminal", value: "airport" },
-  { label: "City Center", value: "city-center" },
-  { label: "West Side Branch", value: "west-side" },
-  { label: "East Side Branch", value: "east-side" },
-  { label: "North Mall Kiosk", value: "north-mall" },
-  { label: "South Station", value: "south-station" },
-]
-
-// Mock data for roles
+// Define roles
 const roles = [
-  { label: "Administrator", value: "admin" },
-  { label: "Manager", value: "manager" },
-  { label: "Agent", value: "agent" },
-  { label: "Maintenance", value: "maintenance" },
-  { label: "Finance", value: "finance" },
-  { label: "Customer Support", value: "support" },
+  { label: "Administrator", value: "Administrator" },
+  { label: "Manager", value: "Manager" },
+  { label: "Agent", value: "Agent" },
+  { label: "Maintenance", value: "Maintenance" },
+  { label: "Finance", value: "Finance" },
+  { label: "Customer Support", value: "Customer Support" },
 ]
 
-// Mock data for teams
+// Define teams
 const teams = [
-  { label: "Operations", value: "operations" },
-  { label: "Sales", value: "sales" },
-  { label: "Customer Service", value: "customer-service" },
-  { label: "Fleet Management", value: "fleet" },
-  { label: "Administration", value: "administration" },
-]
-
-// Mock data for staff (for reports to field)
-const staffMembers = [
-  { label: "John Smith", value: "john-smith" },
-  { label: "Sarah Johnson", value: "sarah-johnson" },
-  { label: "Michael Brown", value: "michael-brown" },
-  { label: "Emily Davis", value: "emily-davis" },
-  { label: "Robert Wilson", value: "robert-wilson" },
+  { label: "Operations", value: "Operations" },
+  { label: "Sales", value: "Sales" },
+  { label: "Customer Service", value: "Customer Service" },
+  { label: "Fleet Management", value: "Fleet Management" },
+  { label: "Administration", value: "Administration" },
 ]
 
 const formSchema = z.object({
@@ -64,9 +50,12 @@ const formSchema = z.object({
   accessLocations: z.array(z.string()).min(1, {
     message: "Please select at least one location.",
   }),
-  password: z.string().min(8, {
-    message: "Password must be at least 8 characters.",
-  }),
+  password: z
+    .string()
+    .min(8, {
+      message: "Password must be at least 8 characters.",
+    })
+    .optional(),
   email: z.string().email({
     message: "Please enter a valid email address.",
   }),
@@ -94,7 +83,7 @@ const formSchema = z.object({
 type StaffFormValues = z.infer<typeof formSchema>
 
 interface StaffFormProps {
-  initialData?: StaffFormValues
+  initialData?: Partial<StaffFormValues>
   id?: string
 }
 
@@ -102,8 +91,28 @@ export function StaffForm({ initialData, id }: StaffFormProps) {
   const router = useRouter()
   const { toast } = useToast()
   const [isLoading, setIsLoading] = useState(false)
+  const [locations, setLocations] = useState<{ label: string; value: string }[]>([])
+  const [staffMembers, setStaffMembers] = useState<{ label: string; value: string }[]>([])
 
-  const defaultValues: Partial<StaffFormValues> = initialData || {
+  useEffect(() => {
+    async function loadData() {
+      // Load locations for dropdown
+      const { locations, error: locError } = await getLocationsForDropdown()
+      if (!locError) {
+        setLocations(locations.map((loc) => ({ label: loc.name, value: loc.id })))
+      }
+
+      // Load staff members for reports-to dropdown
+      const { staff, error: staffError } = await getStaffForDropdown()
+      if (!staffError) {
+        setStaffMembers(staff.map((s) => ({ label: s.fullName, value: s.id })))
+      }
+    }
+
+    loadData()
+  }, [])
+
+  const defaultValues: Partial<StaffFormValues> = {
     fullName: "",
     username: "",
     active: true,
@@ -115,6 +124,7 @@ export function StaffForm({ initialData, id }: StaffFormProps) {
     role: "",
     reportsTo: "",
     team: "",
+    ...initialData,
   }
 
   const form = useForm<StaffFormValues>({
@@ -126,20 +136,40 @@ export function StaffForm({ initialData, id }: StaffFormProps) {
     setIsLoading(true)
 
     try {
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 1000))
+      // Prepare data for API
+      const staffData = {
+        ...data,
+        passwordHash: data.password, // Rename for API
+      }
 
-      console.log(data)
+      let result
+      if (id) {
+        // Update existing staff member
+        result = await updateStaffMember(id, staffData)
+      } else {
+        // Create new staff member
+        result = await createStaffMember(staffData)
+      }
 
-      toast({
-        title: id ? "Staff updated" : "Staff created",
-        description: id
-          ? `${data.fullName} has been updated successfully.`
-          : `${data.fullName} has been added to the staff.`,
-      })
+      if (result.error) {
+        toast({
+          title: "Error",
+          description: result.error,
+          variant: "destructive",
+        })
+      } else {
+        toast({
+          title: id ? "Staff updated" : "Staff created",
+          description: id
+            ? `${data.fullName} has been updated successfully.`
+            : `${data.fullName} has been added to the staff.`,
+        })
 
-      router.push("/admin/company")
+        router.push("/admin/company/staff")
+        router.refresh()
+      }
     } catch (error) {
+      console.error("Error submitting form:", error)
       toast({
         title: "Error",
         description: "Something went wrong. Please try again.",
@@ -209,7 +239,7 @@ export function StaffForm({ initialData, id }: StaffFormProps) {
                 name="password"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Password</FormLabel>
+                    <FormLabel>{id ? "New Password (leave blank to keep current)" : "Password"}</FormLabel>
                     <FormControl>
                       <Input type="password" placeholder="••••••••" {...field} />
                     </FormControl>
@@ -363,7 +393,7 @@ export function StaffForm({ initialData, id }: StaffFormProps) {
               <Button
                 type="button"
                 variant="outline"
-                onClick={() => router.push("/admin/company")}
+                onClick={() => router.push("/admin/company/staff")}
                 disabled={isLoading}
               >
                 Cancel

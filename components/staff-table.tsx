@@ -1,79 +1,145 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Badge } from "@/components/ui/badge"
 import { Edit, Eye, MoreHorizontal, Plus, Search, Trash } from "lucide-react"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
+import { toast } from "@/components/ui/use-toast"
 import Link from "next/link"
-
-// Mock data for staff
-const staffData = [
-  {
-    id: "1",
-    fullName: "John Smith",
-    username: "johnsmith",
-    email: "john.smith@example.com",
-    role: "Administrator",
-    team: "Operations",
-    active: true,
-    locations: ["Downtown Office", "Airport Terminal"],
-  },
-  {
-    id: "2",
-    fullName: "Sarah Johnson",
-    username: "sarahj",
-    email: "sarah.johnson@example.com",
-    role: "Manager",
-    team: "Sales",
-    active: true,
-    locations: ["City Center", "West Side Branch"],
-  },
-  {
-    id: "3",
-    fullName: "Michael Brown",
-    username: "michaelb",
-    email: "michael.brown@example.com",
-    role: "Agent",
-    team: "Customer Service",
-    active: false,
-    locations: ["East Side Branch"],
-  },
-  {
-    id: "4",
-    fullName: "Emily Davis",
-    username: "emilyd",
-    email: "emily.davis@example.com",
-    role: "Finance",
-    team: "Administration",
-    active: true,
-    locations: ["Downtown Office", "North Mall Kiosk"],
-  },
-  {
-    id: "5",
-    fullName: "Robert Wilson",
-    username: "robertw",
-    email: "robert.wilson@example.com",
-    role: "Maintenance",
-    team: "Fleet Management",
-    active: true,
-    locations: ["South Station", "Airport Terminal"],
-  },
-]
+import { useRouter } from "next/navigation"
+import { getStaffMembers, deleteStaffMember, toggleStaffStatus, type Staff } from "@/app/actions/staff-actions"
 
 export function StaffTable() {
+  const router = useRouter()
   const [searchTerm, setSearchTerm] = useState("")
+  const [staff, setStaff] = useState<Staff[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
+  const [staffToDelete, setStaffToDelete] = useState<Staff | null>(null)
+  const [isDeleting, setIsDeleting] = useState(false)
+
+  useEffect(() => {
+    async function loadStaff() {
+      setLoading(true)
+      const { staff, error } = await getStaffMembers()
+      if (error) {
+        setError(error)
+        toast({
+          title: "Error",
+          description: error,
+          variant: "destructive",
+        })
+      } else {
+        setStaff(staff)
+      }
+      setLoading(false)
+    }
+
+    loadStaff()
+  }, [])
 
   // Filter staff based on search term
-  const filteredStaff = staffData.filter(
-    (staff) =>
-      staff.fullName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      staff.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      staff.role.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      staff.team.toLowerCase().includes(searchTerm.toLowerCase()),
+  const filteredStaff = staff.filter(
+    (member) =>
+      member.fullName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      member.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      member.role.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      member.team.toLowerCase().includes(searchTerm.toLowerCase()),
   )
+
+  const handleDelete = async () => {
+    if (!staffToDelete) return
+
+    setIsDeleting(true)
+
+    try {
+      const { error } = await deleteStaffMember(staffToDelete.id)
+
+      if (error) {
+        toast({
+          title: "Error",
+          description: error,
+          variant: "destructive",
+        })
+      } else {
+        // Remove the staff member from the state
+        setStaff(staff.filter((member) => member.id !== staffToDelete.id))
+
+        toast({
+          title: "Staff member deleted",
+          description: `${staffToDelete.fullName} has been deleted successfully.`,
+        })
+      }
+    } catch (error) {
+      console.error("Error deleting staff member:", error)
+      toast({
+        title: "Error",
+        description: "Failed to delete staff member. Please try again.",
+        variant: "destructive",
+      })
+    } finally {
+      setIsDeleting(false)
+      setDeleteDialogOpen(false)
+      setStaffToDelete(null)
+      router.refresh()
+    }
+  }
+
+  const openDeleteDialog = (member: Staff) => {
+    setStaffToDelete(member)
+    setDeleteDialogOpen(true)
+  }
+
+  const handleToggleStatus = async (staffId: string, currentStatus: boolean) => {
+    try {
+      const { error } = await toggleStaffStatus(staffId, currentStatus)
+
+      if (error) {
+        toast({
+          title: "Error",
+          description: error,
+          variant: "destructive",
+        })
+      } else {
+        // Update the staff status in the state
+        setStaff(staff.map((member) => (member.id === staffId ? { ...member, active: !currentStatus } : member)))
+
+        toast({
+          title: "Status updated",
+          description: `Staff member status has been ${!currentStatus ? "activated" : "deactivated"}.`,
+        })
+      }
+    } catch (error) {
+      console.error("Error updating staff status:", error)
+      toast({
+        title: "Error",
+        description: "Failed to update staff status. Please try again.",
+        variant: "destructive",
+      })
+    }
+  }
+
+  if (loading) {
+    return <div className="flex justify-center p-4">Loading staff members...</div>
+  }
+
+  if (error) {
+    return <div className="text-red-500 p-4">Error: {error}</div>
+  }
 
   return (
     <div className="space-y-4">
@@ -103,31 +169,28 @@ export function StaffTable() {
               <TableHead>Role</TableHead>
               <TableHead>Team</TableHead>
               <TableHead>Status</TableHead>
-              <TableHead>Locations</TableHead>
               <TableHead className="w-[80px]">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {filteredStaff.length > 0 ? (
-              filteredStaff.map((staff) => (
-                <TableRow key={staff.id}>
-                  <TableCell className="font-medium">{staff.fullName}</TableCell>
-                  <TableCell>{staff.email}</TableCell>
-                  <TableCell>{staff.role}</TableCell>
-                  <TableCell>{staff.team}</TableCell>
+              filteredStaff.map((member) => (
+                <TableRow key={member.id}>
+                  <TableCell className="font-medium">{member.fullName}</TableCell>
+                  <TableCell>{member.email}</TableCell>
+                  <TableCell>{member.role}</TableCell>
+                  <TableCell>{member.team}</TableCell>
                   <TableCell>
-                    <Badge variant={staff.active ? "default" : "secondary"}>
-                      {staff.active ? "Active" : "Inactive"}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex flex-wrap gap-1">
-                      {staff.locations.map((location) => (
-                        <Badge key={location} variant="outline">
-                          {location}
-                        </Badge>
-                      ))}
-                    </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className={`px-2 py-1 rounded-full text-xs ${
+                        member.active ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"
+                      }`}
+                      onClick={() => handleToggleStatus(member.id, member.active)}
+                    >
+                      {member.active ? "Active" : "Inactive"}
+                    </Button>
                   </TableCell>
                   <TableCell>
                     <DropdownMenu>
@@ -139,16 +202,16 @@ export function StaffTable() {
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
                         <DropdownMenuItem asChild>
-                          <Link href={`/admin/company/staff/${staff.id}/view`}>
+                          <Link href={`/admin/company/staff/${member.id}/view`}>
                             <Eye className="mr-2 h-4 w-4" /> View
                           </Link>
                         </DropdownMenuItem>
                         <DropdownMenuItem asChild>
-                          <Link href={`/admin/company/staff/${staff.id}/edit`}>
+                          <Link href={`/admin/company/staff/${member.id}/edit`}>
                             <Edit className="mr-2 h-4 w-4" /> Edit
                           </Link>
                         </DropdownMenuItem>
-                        <DropdownMenuItem className="text-destructive">
+                        <DropdownMenuItem className="text-destructive" onClick={() => openDeleteDialog(member)}>
                           <Trash className="mr-2 h-4 w-4" /> Delete
                         </DropdownMenuItem>
                       </DropdownMenuContent>
@@ -158,7 +221,7 @@ export function StaffTable() {
               ))
             ) : (
               <TableRow>
-                <TableCell colSpan={7} className="h-24 text-center">
+                <TableCell colSpan={6} className="h-24 text-center">
                   No staff found.
                 </TableCell>
               </TableRow>
@@ -166,6 +229,28 @@ export function StaffTable() {
           </TableBody>
         </Table>
       </div>
+
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently delete the staff member{" "}
+              <span className="font-semibold">{staffToDelete?.fullName}</span>. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDelete}
+              disabled={isDeleting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {isDeleting ? "Deleting..." : "Delete"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

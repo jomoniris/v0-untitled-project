@@ -1,25 +1,65 @@
+"use client"
+
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Edit, ArrowLeft } from "lucide-react"
 import Link from "next/link"
+import { useParams } from "next/navigation"
+import { useEffect, useState } from "react"
+import { getStaffMemberById } from "@/app/actions/staff-actions"
 
-// Mock data for a staff member
-const staffMember = {
-  id: "1",
-  fullName: "John Smith",
-  username: "johnsmith",
-  email: "john.smith@example.com",
-  mobile: "+1 (555) 123-4567",
-  workPhone: "+1 (555) 987-6543",
-  role: "Administrator",
-  team: "Operations",
-  reportsTo: "None",
-  accessLocations: ["Downtown Office", "Airport Terminal"],
-  active: true,
-}
+export default function ViewStaffPage() {
+  const params = useParams()
+  const id = params.id as string
+  const [staffMember, setStaffMember] = useState<any>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
-export default function ViewStaffPage({ params }: { params: { id: string } }) {
+  useEffect(() => {
+    async function loadStaffMember() {
+      try {
+        const { staff, error } = await getStaffMemberById(id)
+        if (error) {
+          setError(error)
+        } else if (staff) {
+          setStaffMember(staff)
+        } else {
+          setError("Staff member not found")
+        }
+      } catch (err) {
+        setError("Failed to load staff data")
+        console.error(err)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    loadStaffMember()
+  }, [id])
+
+  if (loading) {
+    return (
+      <div className="space-y-4">
+        <div>
+          <h2 className="text-2xl font-bold tracking-tight">Staff Details</h2>
+          <p className="text-muted-foreground">Loading staff data...</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="space-y-4">
+        <div>
+          <h2 className="text-2xl font-bold tracking-tight">Error</h2>
+          <p className="text-muted-foreground">{error}</p>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="space-y-4">
       <div className="flex justify-between items-center">
@@ -34,7 +74,7 @@ export default function ViewStaffPage({ params }: { params: { id: string } }) {
             </Link>
           </Button>
           <Button asChild>
-            <Link href={`/admin/company/staff/${params.id}/edit`}>
+            <Link href={`/admin/company/staff/${id}/edit`}>
               <Edit className="mr-2 h-4 w-4" /> Edit Staff
             </Link>
           </Button>
@@ -62,10 +102,10 @@ export default function ViewStaffPage({ params }: { params: { id: string } }) {
                   <span className="font-medium">Email:</span> {staffMember.email}
                 </div>
                 <div>
-                  <span className="font-medium">Mobile:</span> {staffMember.mobile}
+                  <span className="font-medium">Mobile:</span> {staffMember.mobile || "N/A"}
                 </div>
                 <div>
-                  <span className="font-medium">Work Phone:</span> {staffMember.workPhone}
+                  <span className="font-medium">Work Phone:</span> {staffMember.workPhone || "N/A"}
                 </div>
               </div>
             </div>
@@ -80,7 +120,7 @@ export default function ViewStaffPage({ params }: { params: { id: string } }) {
                   <span className="font-medium">Team:</span> {staffMember.team}
                 </div>
                 <div>
-                  <span className="font-medium">Reports To:</span> {staffMember.reportsTo}
+                  <span className="font-medium">Reports To:</span> {staffMember.reportsTo || "None"}
                 </div>
               </div>
             </div>
@@ -89,11 +129,15 @@ export default function ViewStaffPage({ params }: { params: { id: string } }) {
           <div>
             <h3 className="text-sm font-medium text-muted-foreground">Access Locations</h3>
             <div className="mt-2 flex flex-wrap gap-1">
-              {staffMember.accessLocations.map((location) => (
-                <Badge key={location} variant="outline">
-                  {location}
-                </Badge>
-              ))}
+              {staffMember.accessLocations && staffMember.accessLocations.length > 0 ? (
+                staffMember.accessLocations.map((location: string) => (
+                  <Badge key={location} variant="outline">
+                    {location}
+                  </Badge>
+                ))
+              ) : (
+                <span className="text-muted-foreground">No access locations assigned</span>
+              )}
             </div>
           </div>
         </CardContent>

@@ -5,7 +5,7 @@ import type React from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { cn } from "@/lib/utils"
-import { Settings, Clock, BarChart3, Layers } from "lucide-react"
+import { Settings, BarChart3, Layers } from "lucide-react"
 
 interface FleetMenuItemProps {
   href: string
@@ -47,12 +47,6 @@ export function FleetMenu() {
           icon={<Layers className="h-4 w-4" />}
           title="Vehicle Groups"
           active={pathname === "/admin/company/fleet/vehicle-group"}
-        />
-        <FleetMenuItem
-          href="/admin/fleet/nrt"
-          icon={<Clock className="h-4 w-4" />}
-          title="Non-Revenue Time"
-          active={pathname === "/admin/fleet/nrt"}
         />
         <FleetMenuItem
           href="/admin/fleet/utilization"

@@ -1,36 +1,30 @@
-import Link from "next/link"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Plus } from "lucide-react"
 import { VehicleGroupTable } from "@/components/vehicle-group-table"
+import { PlusCircle } from "lucide-react"
+import Link from "next/link"
+import { getVehicleGroups } from "@/app/actions/vehicle-group-actions"
 
-export default function VehicleGroupPage() {
+export default async function VehicleGroupPage() {
+  const { groups, error } = await getVehicleGroups()
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Vehicle Groups</h1>
-          <p className="text-muted-foreground">Manage vehicle groups for your rental fleet</p>
+          <p className="text-muted-foreground">Manage your vehicle groups and their specifications</p>
         </div>
-        <div className="flex gap-2">
-          <Button asChild>
-            <Link href="/admin/company/fleet/vehicle-group/new">
-              <Plus className="mr-2 h-4 w-4" />
-              Add Vehicle Group
-            </Link>
-          </Button>
-        </div>
+        <Button asChild>
+          <Link href="/admin/company/fleet/vehicle-group/new">
+            <PlusCircle className="mr-2 h-4 w-4" />
+            Add New Group
+          </Link>
+        </Button>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>All Vehicle Groups</CardTitle>
-          <CardDescription>View and manage all vehicle groups in your fleet</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <VehicleGroupTable />
-        </CardContent>
-      </Card>
+      {error && <div className="bg-destructive/15 text-destructive p-3 rounded-md">{error}</div>}
+
+      <VehicleGroupTable initialGroups={groups} />
     </div>
   )
 }

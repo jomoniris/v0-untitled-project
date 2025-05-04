@@ -15,75 +15,101 @@ import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, For
 import { toast } from "@/components/ui/use-toast"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import Image from "next/image"
+import {
+  createVehicleGroup,
+  updateVehicleGroup,
+  type VehicleGroupFormValues,
+} from "@/app/actions/vehicle-group-actions"
+import { Loader2 } from "lucide-react"
 
 // Define the form schema with validation
-const vehicleGroupFormSchema = z.object({
-  // Basic Information
-  code: z
-    .string()
-    .min(2, {
-      message: "Code must be at least 2 characters.",
-    })
-    .max(10, {
-      message: "Code must not be longer than 10 characters.",
+const vehicleGroupFormSchema = z
+  .object({
+    // Basic Information
+    code: z
+      .string()
+      .min(2, {
+        message: "Code must be at least 2 characters.",
+      })
+      .max(10, {
+        message: "Code must not be longer than 10 characters.",
+      })
+      .toUpperCase()
+      .refine((value) => /^[A-Z0-9]+$/.test(value), {
+        message: "Code must contain only uppercase letters and numbers.",
+      }),
+    description: z
+      .string()
+      .min(3, {
+        message: "Description must be at least 3 characters.",
+      })
+      .max(100, {
+        message: "Description must not be longer than 100 characters.",
+      }),
+    sipCode: z
+      .string()
+      .min(2, {
+        message: "SIP code must be at least 2 characters.",
+      })
+      .max(10, {
+        message: "SIP code must not be longer than 10 characters.",
+      })
+      .toUpperCase()
+      .refine((value) => /^[A-Z0-9]+$/.test(value), {
+        message: "SIP code must contain only uppercase letters and numbers.",
+      }),
+    class: z.string({
+      required_error: "Class is required.",
     }),
-  description: z
-    .string()
-    .min(3, {
-      message: "Description must be at least 3 characters.",
-    })
-    .max(100, {
-      message: "Description must not be longer than 100 characters.",
+    autoAllocate: z.boolean().default(false),
+    fuelType: z.string({
+      required_error: "Fuel type is required.",
     }),
-  sipCode: z
-    .string()
-    .min(2, {
-      message: "SIP code must be at least 2 characters.",
-    })
-    .max(10, {
-      message: "SIP code must not be longer than 10 characters.",
-    }),
-  class: z.string({
-    required_error: "Class is required.",
-  }),
-  autoAllocate: z.boolean().default(false),
-  fuelType: z.string({
-    required_error: "Fuel type is required.",
-  }),
-  tankCapacity: z.number().min(0),
+    tankCapacity: z.coerce.number().min(0).optional(),
 
-  // Age Rental Limits
-  minAge: z.number().min(0).default(0),
-  youngDriverLimit: z.number().min(0).default(0),
-  maxAgeLimit: z.number().min(0).default(0),
-  drivingYears: z.number().min(0).default(0),
-  seniorLimit: z.number().min(0).default(0),
+    // Age Rental Limits
+    minAge: z.coerce.number().min(16, { message: "Minimum age must be at least 16" }).max(100).default(21),
+    youngDriverLimit: z.coerce.number().min(16).max(100).default(25),
+    maxAgeLimit: z.coerce.number().min(16).max(100).default(75),
+    drivingYears: z.coerce.number().min(0).max(50).default(2),
+    seniorLimit: z.coerce.number().min(16).max(100).default(70),
 
-  // Vehicle Features
-  doors: z.number().min(0),
-  suitcases: z.number().min(0),
-  pax: z.number().min(0),
-  bags: z.number().min(0),
+    // Vehicle Features
+    doors: z.coerce.number().min(1, { message: "Vehicle must have at least 1 door" }).max(10),
+    suitcases: z.coerce.number().min(0).max(10),
+    pax: z.coerce.number().min(1, { message: "Vehicle must accommodate at least 1 passenger" }).max(50),
+    bags: z.coerce.number().min(0).max(20),
 
-  // Vehicle Upgrades
-  upgradeMode: z.string().optional(),
-  alternateGroups: z.string().optional(),
+    // Vehicle Upgrades
+    upgradeMode: z.string().optional(),
+    alternateGroups: z.string().optional(),
 
-  // Website Photo
-  image: z.string().optional(),
-})
-
-type VehicleGroupFormValues = z.infer<typeof vehicleGroupFormSchema>
+    // Website Photo
+    imagePath: z.string().optional(),
+  })
+  .refine((data) => data.youngDriverLimit >= data.minAge, {
+    message: "Young driver limit must be greater than or equal to minimum age",
+    path: ["youngDriverLimit"],
+  })
+  .refine((data) => data.maxAgeLimit > data.youngDriverLimit, {
+    message: "Maximum age limit must be greater than young driver limit",
+    path: ["maxAgeLimit"],
+  })
+  .refine((data) => data.seniorLimit <= data.maxAgeLimit, {
+    message: "Senior limit must be less than or equal to maximum age limit",
+    path: ["seniorLimit"],
+  })
 
 // This type defines the props for the VehicleGroupForm component
 interface VehicleGroupFormProps {
-  initialData?: Partial<VehicleGroupFormValues>
+  initialData?: Partial<VehicleGroupFormValues> & { id?: string }
   isEditing?: boolean
 }
 
 export function VehicleGroupForm({ initialData, isEditing = false }: VehicleGroupFormProps) {
   const router = useRouter()
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [serverError, setServerError] = useState<string | null>(null)
 
   // Default form values
   const defaultValues: Partial<VehicleGroupFormValues> = {
@@ -92,50 +118,87 @@ export function VehicleGroupForm({ initialData, isEditing = false }: VehicleGrou
     sipCode: "",
     class: "",
     autoAllocate: false,
-    fuelType: "",
+    fuelType: "petrol",
     tankCapacity: 0,
-    minAge: 0,
-    youngDriverLimit: 0,
-    maxAgeLimit: 0,
-    drivingYears: 0,
-    seniorLimit: 0,
-    doors: 0,
-    suitcases: 0,
-    pax: 0,
-    bags: 0,
-    upgradeMode: "",
-    alternateGroups: "",
-    image: "",
+    minAge: 21,
+    youngDriverLimit: 25,
+    maxAgeLimit: 75,
+    drivingYears: 2,
+    seniorLimit: 70,
+    doors: 4,
+    suitcases: 1,
+    pax: 5,
+    bags: 1,
+    upgradeMode: "none",
+    alternateGroups: "none",
+    imagePath: "",
     ...initialData,
   }
 
-  const form = useForm<VehicleGroupFormValues>({
+  const form = useForm<z.infer<typeof vehicleGroupFormSchema>>({
     resolver: zodResolver(vehicleGroupFormSchema),
     defaultValues,
   })
 
-  async function onSubmit(data: VehicleGroupFormValues) {
+  async function onSubmit(data: z.infer<typeof vehicleGroupFormSchema>) {
     setIsSubmitting(true)
+    setServerError(null)
 
     try {
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 1000))
+      // Transform the data for the database
+      const transformedData: VehicleGroupFormValues = {
+        ...data,
+        // Convert empty strings to null for optional fields
+        tankCapacity: data.tankCapacity || null,
+        upgradeMode: data.upgradeMode || null,
+        alternateGroups: data.alternateGroups || null,
+        imagePath: data.imagePath || null,
+      }
 
-      console.log("Form submitted:", data)
+      if (isEditing && initialData?.id) {
+        // Update existing vehicle group
+        const { error } = await updateVehicleGroup(initialData.id, transformedData)
 
-      // Show success message
-      toast({
-        title: isEditing ? "Vehicle group updated" : "Vehicle group created",
-        description: isEditing
-          ? `Vehicle group ${data.code} has been updated successfully.`
-          : `Vehicle group ${data.code} has been created successfully.`,
-      })
+        if (error) {
+          setServerError(error)
+          toast({
+            title: "Error",
+            description: error,
+            variant: "destructive",
+          })
+          return
+        }
+
+        toast({
+          title: "Vehicle group updated",
+          description: `Vehicle group ${data.code} has been updated successfully.`,
+        })
+      } else {
+        // Create new vehicle group
+        const { error } = await createVehicleGroup(transformedData)
+
+        if (error) {
+          setServerError(error)
+          toast({
+            title: "Error",
+            description: error,
+            variant: "destructive",
+          })
+          return
+        }
+
+        toast({
+          title: "Vehicle group created",
+          description: `Vehicle group ${data.code} has been created successfully.`,
+        })
+      }
 
       // Redirect back to vehicle groups list
       router.push("/admin/company/fleet/vehicle-group")
       router.refresh()
     } catch (error) {
       console.error("Error submitting form:", error)
+      setServerError("An unexpected error occurred. Please try again.")
       toast({
         title: "Error",
         description: "Something went wrong. Please try again.",
@@ -150,6 +213,8 @@ export function VehicleGroupForm({ initialData, isEditing = false }: VehicleGrou
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)}>
         <div className="space-y-6">
+          {serverError && <div className="bg-destructive/15 text-destructive p-3 rounded-md">{serverError}</div>}
+
           <Card>
             <CardHeader>
               <CardTitle>{isEditing ? "Edit Vehicle Group" : "New Vehicle Group"}</CardTitle>
@@ -176,7 +241,12 @@ export function VehicleGroupForm({ initialData, isEditing = false }: VehicleGrou
                         <FormItem>
                           <FormLabel>Code</FormLabel>
                           <FormControl>
-                            <Input placeholder="Enter group code" {...field} />
+                            <Input
+                              placeholder="Enter group code"
+                              {...field}
+                              onChange={(e) => field.onChange(e.target.value.toUpperCase())}
+                              disabled={isEditing}
+                            />
                           </FormControl>
                           <FormDescription>A unique identifier for this vehicle group.</FormDescription>
                           <FormMessage />
@@ -208,7 +278,11 @@ export function VehicleGroupForm({ initialData, isEditing = false }: VehicleGrou
                         <FormItem>
                           <FormLabel>SIP Code</FormLabel>
                           <FormControl>
-                            <Input placeholder="Enter SIP code" {...field} />
+                            <Input
+                              placeholder="Enter SIP code"
+                              {...field}
+                              onChange={(e) => field.onChange(e.target.value.toUpperCase())}
+                            />
                           </FormControl>
                           <FormDescription>Standard Industry Product code.</FormDescription>
                           <FormMessage />
@@ -313,7 +387,7 @@ export function VehicleGroupForm({ initialData, isEditing = false }: VehicleGrou
 
                   <FormField
                     control={form.control}
-                    name="image"
+                    name="imagePath"
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Website Photo</FormLabel>
@@ -351,7 +425,8 @@ export function VehicleGroupForm({ initialData, isEditing = false }: VehicleGrou
                           <FormControl>
                             <Input
                               type="number"
-                              min={0}
+                              min={16}
+                              max={100}
                               placeholder="Enter minimum age"
                               {...field}
                               onChange={(e) => field.onChange(e.target.valueAsNumber)}
@@ -372,7 +447,8 @@ export function VehicleGroupForm({ initialData, isEditing = false }: VehicleGrou
                           <FormControl>
                             <Input
                               type="number"
-                              min={0}
+                              min={16}
+                              max={100}
                               placeholder="Enter young driver limit"
                               {...field}
                               onChange={(e) => field.onChange(e.target.valueAsNumber)}
@@ -395,7 +471,8 @@ export function VehicleGroupForm({ initialData, isEditing = false }: VehicleGrou
                           <FormControl>
                             <Input
                               type="number"
-                              min={0}
+                              min={16}
+                              max={100}
                               placeholder="Enter maximum age limit"
                               {...field}
                               onChange={(e) => field.onChange(e.target.valueAsNumber)}
@@ -416,7 +493,8 @@ export function VehicleGroupForm({ initialData, isEditing = false }: VehicleGrou
                           <FormControl>
                             <Input
                               type="number"
-                              min={0}
+                              min={16}
+                              max={100}
                               placeholder="Enter senior limit"
                               {...field}
                               onChange={(e) => field.onChange(e.target.valueAsNumber)}
@@ -439,6 +517,7 @@ export function VehicleGroupForm({ initialData, isEditing = false }: VehicleGrou
                           <Input
                             type="number"
                             min={0}
+                            max={50}
                             placeholder="Enter minimum driving years"
                             {...field}
                             onChange={(e) => field.onChange(e.target.valueAsNumber)}
@@ -463,7 +542,8 @@ export function VehicleGroupForm({ initialData, isEditing = false }: VehicleGrou
                           <FormControl>
                             <Input
                               type="number"
-                              min={0}
+                              min={1}
+                              max={10}
                               placeholder="Enter number of doors"
                               {...field}
                               onChange={(e) => field.onChange(e.target.valueAsNumber)}
@@ -485,6 +565,7 @@ export function VehicleGroupForm({ initialData, isEditing = false }: VehicleGrou
                             <Input
                               type="number"
                               min={0}
+                              max={10}
                               placeholder="Enter number of suitcases"
                               {...field}
                               onChange={(e) => field.onChange(e.target.valueAsNumber)}
@@ -507,7 +588,8 @@ export function VehicleGroupForm({ initialData, isEditing = false }: VehicleGrou
                           <FormControl>
                             <Input
                               type="number"
-                              min={0}
+                              min={1}
+                              max={50}
                               placeholder="Enter number of passengers"
                               {...field}
                               onChange={(e) => field.onChange(e.target.valueAsNumber)}
@@ -529,6 +611,7 @@ export function VehicleGroupForm({ initialData, isEditing = false }: VehicleGrou
                             <Input
                               type="number"
                               min={0}
+                              max={20}
                               placeholder="Enter number of bags"
                               {...field}
                               onChange={(e) => field.onChange(e.target.valueAsNumber)}
@@ -550,7 +633,7 @@ export function VehicleGroupForm({ initialData, isEditing = false }: VehicleGrou
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Upgrade Mode</FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <Select onValueChange={field.onChange} defaultValue={field.value || "none"}>
                           <FormControl>
                             <SelectTrigger>
                               <SelectValue placeholder="Select upgrade mode" />
@@ -575,7 +658,7 @@ export function VehicleGroupForm({ initialData, isEditing = false }: VehicleGrou
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Alternate Groups</FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <Select onValueChange={field.onChange} defaultValue={field.value || "none"}>
                           <FormControl>
                             <SelectTrigger>
                               <SelectValue placeholder="Select alternate groups" />
@@ -603,7 +686,16 @@ export function VehicleGroupForm({ initialData, isEditing = false }: VehicleGrou
                 <Link href="/admin/company/fleet/vehicle-group">Cancel</Link>
               </Button>
               <Button type="submit" disabled={isSubmitting}>
-                {isSubmitting ? "Saving..." : isEditing ? "Update Group" : "Save Group"}
+                {isSubmitting ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    {isEditing ? "Updating..." : "Saving..."}
+                  </>
+                ) : isEditing ? (
+                  "Update Group"
+                ) : (
+                  "Save Group"
+                )}
               </Button>
             </CardFooter>
           </Card>

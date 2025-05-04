@@ -12,7 +12,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import Link from "next/link"
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -25,55 +25,37 @@ import {
 } from "@/components/ui/alert-dialog"
 import { toast } from "@/components/ui/use-toast"
 import { useRouter } from "next/navigation"
+import { getZones, deleteZone, toggleZoneStatus, type Zone } from "@/app/actions/zone-actions"
 
 export function ZoneTable() {
   const router = useRouter()
-  const [zones, setZones] = useState([
-    {
-      id: "1",
-      code: "NYC-DOWNTOWN",
-      description: "New York City Downtown Area",
-      belongsTo: "New York City",
-      timeZone: "Eastern Time (ET)",
-      active: true,
-    },
-    {
-      id: "2",
-      code: "NYC-MIDTOWN",
-      description: "New York City Midtown Area",
-      belongsTo: "New York City",
-      timeZone: "Eastern Time (ET)",
-      active: true,
-    },
-    {
-      id: "3",
-      code: "NYC-AIRPORT",
-      description: "New York City Airport Zone",
-      belongsTo: "New York City",
-      timeZone: "Eastern Time (ET)",
-      active: true,
-    },
-    {
-      id: "4",
-      code: "LA-DOWNTOWN",
-      description: "Los Angeles Downtown Area",
-      belongsTo: "Los Angeles",
-      timeZone: "Pacific Time (PT)",
-      active: false,
-    },
-    {
-      id: "5",
-      code: "CHI-NORTH",
-      description: "Chicago North Side",
-      belongsTo: "Chicago",
-      timeZone: "Central Time (CT)",
-      active: true,
-    },
-  ])
+  const [zones, setZones] = useState<Zone[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
-  const [zoneToDelete, setZoneToDelete] = useState<any>(null)
+  const [zoneToDelete, setZoneToDelete] = useState<Zone | null>(null)
   const [isDeleting, setIsDeleting] = useState(false)
+
+  useEffect(() => {
+    async function loadZones() {
+      setLoading(true)
+      const { zones, error } = await getZones()
+      if (error) {
+        setError(error)
+        toast({
+          title: "Error",
+          description: error,
+          variant: "destructive",
+        })
+      } else {
+        setZones(zones)
+      }
+      setLoading(false)
+    }
+
+    loadZones()
+  }, [])
 
   const handleDelete = async () => {
     if (!zoneToDelete) return
@@ -81,16 +63,23 @@ export function ZoneTable() {
     setIsDeleting(true)
 
     try {
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 1000))
+      const { error } = await deleteZone(zoneToDelete.id)
 
-      // Remove the zone from the state
-      setZones(zones.filter((zone) => zone.id !== zoneToDelete.id))
+      if (error) {
+        toast({
+          title: "Error",
+          description: error,
+          variant: "destructive",
+        })
+      } else {
+        // Remove the zone from the state
+        setZones(zones.filter((zone) => zone.id !== zoneToDelete.id))
 
-      toast({
-        title: "Zone deleted",
-        description: `Zone ${zoneToDelete.code} has been deleted successfully.`,
-      })
+        toast({
+          title: "Zone deleted",
+          description: `Zone ${zoneToDelete.code} has been deleted successfully.`,
+        })
+      }
     } catch (error) {
       console.error("Error deleting zone:", error)
       toast({
@@ -106,23 +95,30 @@ export function ZoneTable() {
     }
   }
 
-  const openDeleteDialog = (zone: any) => {
+  const openDeleteDialog = (zone: Zone) => {
     setZoneToDelete(zone)
     setDeleteDialogOpen(true)
   }
 
-  const toggleZoneStatus = async (zoneId: string, currentStatus: boolean) => {
+  const handleToggleStatus = async (zoneId: string, currentStatus: boolean) => {
     try {
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 500))
+      const { error } = await toggleZoneStatus(zoneId, currentStatus)
 
-      // Update the zone status in the state
-      setZones(zones.map((zone) => (zone.id === zoneId ? { ...zone, active: !currentStatus } : zone)))
+      if (error) {
+        toast({
+          title: "Error",
+          description: error,
+          variant: "destructive",
+        })
+      } else {
+        // Update the zone status in the state
+        setZones(zones.map((zone) => (zone.id === zoneId ? { ...zone, active: !currentStatus } : zone)))
 
-      toast({
-        title: "Status updated",
-        description: `Zone status has been ${!currentStatus ? "activated" : "deactivated"}.`,
-      })
+        toast({
+          title: "Status updated",
+          description: `Zone status has been ${!currentStatus ? "activated" : "deactivated"}.`,
+        })
+      }
     } catch (error) {
       console.error("Error updating zone status:", error)
       toast({
@@ -131,6 +127,14 @@ export function ZoneTable() {
         variant: "destructive",
       })
     }
+  }
+
+  if (loading) {
+    return <div className="flex justify-center p-4">Loading zones...</div>
+  }
+
+  if (error) {
+    return <div className="text-red-500 p-4">Error: {error}</div>
   }
 
   return (
@@ -148,50 +152,58 @@ export function ZoneTable() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {zones.map((zone) => (
-              <TableRow key={zone.id}>
-                <TableCell className="font-medium">{zone.code}</TableCell>
-                <TableCell>{zone.description}</TableCell>
-                <TableCell>{zone.belongsTo}</TableCell>
-                <TableCell>{zone.timeZone}</TableCell>
-                <TableCell>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className={`px-2 py-1 rounded-full text-xs ${
-                      zone.active ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"
-                    }`}
-                    onClick={() => toggleZoneStatus(zone.id, zone.active)}
-                  >
-                    {zone.active ? "Active" : "Inactive"}
-                  </Button>
-                </TableCell>
-                <TableCell className="text-right">
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="icon">
-                        <MoreHorizontal className="h-4 w-4" />
-                        <span className="sr-only">Open menu</span>
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem asChild>
-                        <Link href={`/admin/company/locations/zone/${zone.id}`}>
-                          <Edit className="mr-2 h-4 w-4" />
-                          Edit
-                        </Link>
-                      </DropdownMenuItem>
-                      <DropdownMenuItem className="text-destructive" onClick={() => openDeleteDialog(zone)}>
-                        <Trash2 className="mr-2 h-4 w-4" />
-                        Delete
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
+            {zones.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={6} className="text-center py-4">
+                  No zones found. Create your first zone.
                 </TableCell>
               </TableRow>
-            ))}
+            ) : (
+              zones.map((zone) => (
+                <TableRow key={zone.id}>
+                  <TableCell className="font-medium">{zone.code}</TableCell>
+                  <TableCell>{zone.description}</TableCell>
+                  <TableCell>{zone.belongsTo || "None"}</TableCell>
+                  <TableCell>{zone.timeZone}</TableCell>
+                  <TableCell>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className={`px-2 py-1 rounded-full text-xs ${
+                        zone.active ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"
+                      }`}
+                      onClick={() => handleToggleStatus(zone.id, zone.active)}
+                    >
+                      {zone.active ? "Active" : "Inactive"}
+                    </Button>
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon">
+                          <MoreHorizontal className="h-4 w-4" />
+                          <span className="sr-only">Open menu</span>
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem asChild>
+                          <Link href={`/admin/company/locations/zone/${zone.id}`}>
+                            <Edit className="mr-2 h-4 w-4" />
+                            Edit
+                          </Link>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem className="text-destructive" onClick={() => openDeleteDialog(zone)}>
+                          <Trash2 className="mr-2 h-4 w-4" />
+                          Delete
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </TableCell>
+                </TableRow>
+              ))
+            )}
           </TableBody>
         </Table>
       </div>

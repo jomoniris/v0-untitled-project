@@ -1,5 +1,3 @@
-"use client"
-
 import { VehicleGroupForm } from "@/components/vehicle-group-form"
 
 export default function NewVehicleGroupPage() {
