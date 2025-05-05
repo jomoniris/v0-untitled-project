@@ -14,6 +14,9 @@ import { useState } from "react"
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
 import { toast } from "@/components/ui/use-toast"
 
+// Update the imports to include the server actions
+import { createZone, updateZone } from "@/app/actions/zone-actions"
+
 // Define the form schema with validation
 const zoneFormSchema = z.object({
   code: z
@@ -43,7 +46,7 @@ type ZoneFormValues = z.infer<typeof zoneFormSchema>
 
 // This type defines the props for the ZoneForm component
 interface ZoneFormProps {
-  initialData?: ZoneFormValues
+  initialData?: ZoneFormValues & { id?: string }
   isEditing?: boolean
 }
 
@@ -66,26 +69,34 @@ export function ZoneForm({ initialData, isEditing = false }: ZoneFormProps) {
     defaultValues,
   })
 
+  // Replace the onSubmit function with this implementation
   async function onSubmit(data: ZoneFormValues) {
     setIsSubmitting(true)
 
     try {
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 1000))
+      // Call the appropriate server action based on whether we're editing or creating
+      const result = isEditing ? await updateZone(initialData?.id as string, data) : await createZone(data)
 
-      console.log("Form submitted:", data)
+      if (result.error) {
+        // Show error message if the server action failed
+        toast({
+          title: "Error",
+          description: result.error,
+          variant: "destructive",
+        })
+      } else {
+        // Show success message
+        toast({
+          title: isEditing ? "Zone updated" : "Zone created",
+          description: isEditing
+            ? `Zone ${data.code} has been updated successfully.`
+            : `Zone ${data.code} has been created successfully.`,
+        })
 
-      // Show success message
-      toast({
-        title: isEditing ? "Zone updated" : "Zone created",
-        description: isEditing
-          ? `Zone ${data.code} has been updated successfully.`
-          : `Zone ${data.code} has been created successfully.`,
-      })
-
-      // Redirect back to zones list
-      router.push("/admin/company/locations/zone")
-      router.refresh()
+        // Redirect back to zones list
+        router.push("/admin/company/locations/zone")
+        router.refresh()
+      }
     } catch (error) {
       console.error("Error submitting form:", error)
       toast({
