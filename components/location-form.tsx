@@ -14,6 +14,7 @@ import { useState } from "react"
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
 import { toast } from "@/components/ui/use-toast"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { createLocation, updateLocation } from "@/app/actions/location-actions"
 
 // Define the form schema with validation
 const locationFormSchema = z.object({
@@ -68,7 +69,7 @@ type LocationFormValues = z.infer<typeof locationFormSchema>
 
 // This type defines the props for the LocationForm component
 interface LocationFormProps {
-  initialData?: Partial<LocationFormValues>
+  initialData?: Partial<LocationFormValues> & { id?: string }
   isEditing?: boolean
 }
 
@@ -112,22 +113,27 @@ export function LocationForm({ initialData, isEditing = false }: LocationFormPro
     setIsSubmitting(true)
 
     try {
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 1000))
+      const result = isEditing ? await updateLocation(initialData?.id as string, data) : await createLocation(data)
 
-      console.log("Form submitted:", data)
+      if (result.error) {
+        toast({
+          title: "Error",
+          description: result.error,
+          variant: "destructive",
+        })
+      } else {
+        // Show success message
+        toast({
+          title: isEditing ? "Location updated" : "Location created",
+          description: isEditing
+            ? `Location ${data.name} has been updated successfully.`
+            : `Location ${data.name} has been created successfully.`,
+        })
 
-      // Show success message
-      toast({
-        title: isEditing ? "Location updated" : "Location created",
-        description: isEditing
-          ? `Location ${data.name} has been updated successfully.`
-          : `Location ${data.name} has been created successfully.`,
-      })
-
-      // Redirect back to locations list
-      router.push("/admin/company/locations")
-      router.refresh()
+        // Redirect back to locations list
+        router.push("/admin/company/locations")
+        router.refresh()
+      }
     } catch (error) {
       console.error("Error submitting form:", error)
       toast({
