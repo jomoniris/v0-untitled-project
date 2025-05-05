@@ -24,7 +24,7 @@ const vehicleGroupSchema = z.object({
   seniorLimit: z.number().int().positive().optional(),
   upgradeMode: z.string().optional(),
   alternateGroups: z.string().optional(),
-  imagePath: z.string().optional(),
+  imagePath: z.string().optional().nullable(), // Updated to allow null values
 })
 
 export type VehicleGroupFormValues = z.infer<typeof vehicleGroupSchema>

@@ -152,7 +152,7 @@ export function VehicleGroupForm({ initialData, isEditing = false }: VehicleGrou
         tankCapacity: data.tankCapacity || null,
         upgradeMode: data.upgradeMode || null,
         alternateGroups: data.alternateGroups || null,
-        imagePath: data.imagePath || null,
+        imagePath: data.imagePath && data.imagePath.trim() !== "" ? data.imagePath : null,
       }
 
       if (isEditing && initialData?.id) {
