@@ -1,5 +1,6 @@
 "use client"
 
+import { useState } from "react"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Button } from "@/components/ui/button"
 import { Edit, MoreHorizontal, Trash2 } from "lucide-react"
@@ -12,7 +13,6 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import Link from "next/link"
-import { useState, useEffect } from "react"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -25,37 +25,19 @@ import {
 } from "@/components/ui/alert-dialog"
 import { toast } from "@/components/ui/use-toast"
 import { useRouter } from "next/navigation"
-import { getZones, deleteZone, toggleZoneStatus, type Zone } from "@/app/actions/zone-actions"
+import { deleteZone, toggleZoneStatus, type Zone } from "@/app/actions/zone-actions"
 
-export function ZoneTable() {
+interface ZoneTableProps {
+  initialZones: Zone[]
+}
+
+export default function ZoneTable({ initialZones }: ZoneTableProps) {
   const router = useRouter()
-  const [zones, setZones] = useState<Zone[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const [zones, setZones] = useState<Zone[]>(initialZones)
 
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [zoneToDelete, setZoneToDelete] = useState<Zone | null>(null)
   const [isDeleting, setIsDeleting] = useState(false)
-
-  useEffect(() => {
-    async function loadZones() {
-      setLoading(true)
-      const { zones, error } = await getZones()
-      if (error) {
-        setError(error)
-        toast({
-          title: "Error",
-          description: error,
-          variant: "destructive",
-        })
-      } else {
-        setZones(zones)
-      }
-      setLoading(false)
-    }
-
-    loadZones()
-  }, [])
 
   const handleDelete = async () => {
     if (!zoneToDelete) return
@@ -127,14 +109,6 @@ export function ZoneTable() {
         variant: "destructive",
       })
     }
-  }
-
-  if (loading) {
-    return <div className="flex justify-center p-4">Loading zones...</div>
-  }
-
-  if (error) {
-    return <div className="text-red-500 p-4">Error: {error}</div>
   }
 
   return (

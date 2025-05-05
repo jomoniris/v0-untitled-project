@@ -50,7 +50,7 @@ interface ZoneFormProps {
   isEditing?: boolean
 }
 
-export function ZoneForm({ initialData, isEditing = false }: ZoneFormProps) {
+export default function ZoneForm({ initialData, isEditing = false }: ZoneFormProps) {
   const router = useRouter()
   const [isSubmitting, setIsSubmitting] = useState(false)
 

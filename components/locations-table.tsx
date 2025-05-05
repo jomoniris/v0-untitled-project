@@ -12,7 +12,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import Link from "next/link"
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -25,37 +25,27 @@ import {
 } from "@/components/ui/alert-dialog"
 import { toast } from "@/components/ui/use-toast"
 import { useRouter } from "next/navigation"
-import { getLocations, deleteLocation, toggleLocationStatus, type Location } from "@/app/actions/location-actions"
+import { deleteLocation, toggleLocationStatus, type Location } from "@/app/actions/location-actions"
 
-export function LocationsTable() {
+interface LocationsTableProps {
+  locations: Location[]
+  loading: boolean
+  error: string | null
+  onLocationDeleted: (locationId: string) => void
+  onLocationStatusChanged: (locationId: string, newStatus: boolean) => void
+}
+
+export function LocationsTable({
+  locations,
+  loading,
+  error,
+  onLocationDeleted,
+  onLocationStatusChanged,
+}: LocationsTableProps) {
   const router = useRouter()
-  const [locations, setLocations] = useState<Location[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [locationToDelete, setLocationToDelete] = useState<Location | null>(null)
   const [isDeleting, setIsDeleting] = useState(false)
-
-  useEffect(() => {
-    async function loadLocations() {
-      setLoading(true)
-      const { locations, error } = await getLocations()
-      if (error) {
-        setError(error)
-        toast({
-          title: "Error",
-          description: error,
-          variant: "destructive",
-        })
-      } else {
-        setLocations(locations)
-      }
-      setLoading(false)
-    }
-
-    loadLocations()
-  }, [])
 
   const handleDelete = async () => {
     if (!locationToDelete) return
@@ -72,8 +62,8 @@ export function LocationsTable() {
           variant: "destructive",
         })
       } else {
-        // Remove the location from the state
-        setLocations(locations.filter((location) => location.id !== locationToDelete.id))
+        // Notify parent component about the deletion
+        onLocationDeleted(locationToDelete.id)
 
         toast({
           title: "Location deleted",
@@ -111,12 +101,8 @@ export function LocationsTable() {
           variant: "destructive",
         })
       } else {
-        // Update the location status in the state
-        setLocations(
-          locations.map((location) =>
-            location.id === locationId ? { ...location, active: !currentStatus } : location,
-          ),
-        )
+        // Notify parent component about the status change
+        onLocationStatusChanged(locationId, !currentStatus)
 
         toast({
           title: "Status updated",
@@ -246,3 +232,5 @@ export function LocationsTable() {
     </>
   )
 }
+
+export default LocationsTable

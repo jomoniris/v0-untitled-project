@@ -1,8 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  reactStrictMode: true,
   experimental: {
-    // Disable static generation for problematic routes
+    // Disable static generation to avoid ref issues during build
     disableStaticGeneration: true,
   },
   eslint: {
