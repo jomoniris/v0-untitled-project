@@ -69,7 +69,7 @@ type LocationFormValues = z.infer<typeof locationFormSchema>
 
 // This type defines the props for the LocationForm component
 interface LocationFormProps {
-  initialData?: Partial<LocationFormValues> & { id?: string }
+  initialData?: any
   isEditing?: boolean
 }
 
@@ -113,7 +113,7 @@ export function LocationForm({ initialData, isEditing = false }: LocationFormPro
     setIsSubmitting(true)
 
     try {
-      const result = isEditing ? await updateLocation(initialData?.id as string, data) : await createLocation(data)
+      const result = isEditing ? await updateLocation(initialData?.id, data) : await createLocation(data)
 
       if (result.error) {
         toast({
@@ -208,7 +208,7 @@ export function LocationForm({ initialData, isEditing = false }: LocationFormPro
                         <FormItem>
                           <FormLabel>Tax 1 (%)</FormLabel>
                           <FormControl>
-                            <Input type="number" placeholder="Enter tax 1 percentage" {...field} />
+                            <Input placeholder="Enter tax 1 percentage" {...field} />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -222,7 +222,7 @@ export function LocationForm({ initialData, isEditing = false }: LocationFormPro
                         <FormItem>
                           <FormLabel>Tax 2 (%)</FormLabel>
                           <FormControl>
-                            <Input type="number" placeholder="Enter tax 2 percentage" {...field} />
+                            <Input placeholder="Enter tax 2 percentage" {...field} />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -237,7 +237,7 @@ export function LocationForm({ initialData, isEditing = false }: LocationFormPro
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Metroplex</FormLabel>
-                          <Select onValueChange={field.onChange} defaultValue={field.value}>
+                          <Select onValueChange={field.onChange} value={field.value}>
                             <FormControl>
                               <SelectTrigger>
                                 <SelectValue placeholder="Select metroplex" />
@@ -262,7 +262,7 @@ export function LocationForm({ initialData, isEditing = false }: LocationFormPro
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Station Type</FormLabel>
-                          <Select onValueChange={field.onChange} defaultValue={field.value}>
+                          <Select onValueChange={field.onChange} value={field.value}>
                             <FormControl>
                               <SelectTrigger>
                                 <SelectValue placeholder="Select station type" />
@@ -367,7 +367,7 @@ export function LocationForm({ initialData, isEditing = false }: LocationFormPro
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Country</FormLabel>
-                          <Select onValueChange={field.onChange} defaultValue={field.value}>
+                          <Select onValueChange={field.onChange} value={field.value}>
                             <FormControl>
                               <SelectTrigger>
                                 <SelectValue placeholder="Select country" />
@@ -391,7 +391,7 @@ export function LocationForm({ initialData, isEditing = false }: LocationFormPro
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>State</FormLabel>
-                          <Select onValueChange={field.onChange} defaultValue={field.value}>
+                          <Select onValueChange={field.onChange} value={field.value}>
                             <FormControl>
                               <SelectTrigger>
                                 <SelectValue placeholder="Select state" />

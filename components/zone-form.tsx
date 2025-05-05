@@ -46,7 +46,7 @@ type ZoneFormValues = z.infer<typeof zoneFormSchema>
 
 // This type defines the props for the ZoneForm component
 interface ZoneFormProps {
-  initialData?: ZoneFormValues & { id?: string }
+  initialData?: any
   isEditing?: boolean
 }
 
@@ -75,7 +75,7 @@ export function ZoneForm({ initialData, isEditing = false }: ZoneFormProps) {
 
     try {
       // Call the appropriate server action based on whether we're editing or creating
-      const result = isEditing ? await updateZone(initialData?.id as string, data) : await createZone(data)
+      const result = isEditing ? await updateZone(initialData?.id, data) : await createZone(data)
 
       if (result.error) {
         // Show error message if the server action failed
@@ -159,7 +159,7 @@ export function ZoneForm({ initialData, isEditing = false }: ZoneFormProps) {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Belongs To</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <Select onValueChange={field.onChange} value={field.value || ""}>
                       <FormControl>
                         <SelectTrigger>
                           <SelectValue placeholder="Select parent zone" />
@@ -184,18 +184,18 @@ export function ZoneForm({ initialData, isEditing = false }: ZoneFormProps) {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Time Zone</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <Select onValueChange={field.onChange} value={field.value}>
                       <FormControl>
                         <SelectTrigger>
                           <SelectValue placeholder="Select time zone" />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        <SelectItem value="est">Eastern Time (ET)</SelectItem>
-                        <SelectItem value="cst">Central Time (CT)</SelectItem>
-                        <SelectItem value="mst">Mountain Time (MT)</SelectItem>
-                        <SelectItem value="pst">Pacific Time (PT)</SelectItem>
-                        <SelectItem value="utc">UTC</SelectItem>
+                        <SelectItem value="America/New_York">Eastern Time (ET)</SelectItem>
+                        <SelectItem value="America/Chicago">Central Time (CT)</SelectItem>
+                        <SelectItem value="America/Denver">Mountain Time (MT)</SelectItem>
+                        <SelectItem value="America/Los_Angeles">Pacific Time (PT)</SelectItem>
+                        <SelectItem value="UTC">UTC</SelectItem>
                       </SelectContent>
                     </Select>
                     <FormDescription>The time zone for this location zone.</FormDescription>

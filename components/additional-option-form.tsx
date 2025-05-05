@@ -75,7 +75,7 @@ type AdditionalOptionFormValues = z.infer<typeof additionalOptionFormSchema>
 
 // This type defines the props for the AdditionalOptionForm component
 interface AdditionalOptionFormProps {
-  initialData?: Partial<AdditionalOptionFormValues> & { id?: string }
+  initialData?: any
   isEditing?: boolean
 }
 
@@ -214,7 +214,7 @@ export function AdditionalOptionForm({ initialData, isEditing = false }: Additio
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Option Type</FormLabel>
-                          <Select onValueChange={field.onChange} defaultValue={field.value}>
+                          <Select onValueChange={field.onChange} value={field.value}>
                             <FormControl>
                               <SelectTrigger>
                                 <SelectValue placeholder="Select option type" />
@@ -239,7 +239,7 @@ export function AdditionalOptionForm({ initialData, isEditing = false }: Additio
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Calculation Type</FormLabel>
-                          <Select onValueChange={field.onChange} defaultValue={field.value}>
+                          <Select onValueChange={field.onChange} value={field.value}>
                             <FormControl>
                               <SelectTrigger>
                                 <SelectValue placeholder="Select calculation type" />
@@ -272,7 +272,8 @@ export function AdditionalOptionForm({ initialData, isEditing = false }: Additio
                             max={250}
                             placeholder="Enter excess weight"
                             {...field}
-                            onChange={(e) => field.onChange(e.target.valueAsNumber)}
+                            onChange={(e) => field.onChange(Number.parseInt(e.target.value) || 1)}
+                            value={field.value}
                           />
                         </FormControl>
                         <FormDescription>Weight value between 1 and 250.</FormDescription>
@@ -288,7 +289,7 @@ export function AdditionalOptionForm({ initialData, isEditing = false }: Additio
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Limitation Type</FormLabel>
-                          <Select onValueChange={field.onChange} defaultValue={field.value}>
+                          <Select onValueChange={field.onChange} value={field.value || ""}>
                             <FormControl>
                               <SelectTrigger>
                                 <SelectValue placeholder="Select limitation type" />
@@ -335,7 +336,7 @@ export function AdditionalOptionForm({ initialData, isEditing = false }: Additio
                               step="0.01"
                               placeholder="Enter minimum charge"
                               {...field}
-                              onChange={(e) => field.onChange(e.target.valueAsNumber)}
+                              onChange={(e) => field.onChange(Number.parseFloat(e.target.value) || undefined)}
                               value={field.value === undefined ? "" : field.value}
                             />
                           </FormControl>
@@ -356,7 +357,7 @@ export function AdditionalOptionForm({ initialData, isEditing = false }: Additio
                               step="0.01"
                               placeholder="Enter maximum charge"
                               {...field}
-                              onChange={(e) => field.onChange(e.target.valueAsNumber)}
+                              onChange={(e) => field.onChange(Number.parseFloat(e.target.value) || undefined)}
                               value={field.value === undefined ? "" : field.value}
                             />
                           </FormControl>
@@ -377,7 +378,7 @@ export function AdditionalOptionForm({ initialData, isEditing = false }: Additio
                               step="0.01"
                               placeholder="Enter replacement fee"
                               {...field}
-                              onChange={(e) => field.onChange(e.target.valueAsNumber)}
+                              onChange={(e) => field.onChange(Number.parseFloat(e.target.value) || undefined)}
                               value={field.value === undefined ? "" : field.value}
                             />
                           </FormControl>
@@ -514,7 +515,7 @@ export function AdditionalOptionForm({ initialData, isEditing = false }: Additio
                             step="0.01"
                             placeholder="Enter commission rate"
                             {...field}
-                            onChange={(e) => field.onChange(e.target.valueAsNumber)}
+                            onChange={(e) => field.onChange(Number.parseFloat(e.target.value) || undefined)}
                             value={field.value === undefined ? "" : field.value}
                           />
                         </FormControl>
