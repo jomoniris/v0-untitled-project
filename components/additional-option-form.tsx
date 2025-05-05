@@ -15,6 +15,7 @@ import { useState } from "react"
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
 import { toast } from "@/components/ui/use-toast"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { createAdditionalOption, updateAdditionalOption } from "@/app/actions/additional-option-actions"
 
 // Define the form schema with validation
 const additionalOptionFormSchema = z.object({
@@ -74,7 +75,7 @@ type AdditionalOptionFormValues = z.infer<typeof additionalOptionFormSchema>
 
 // This type defines the props for the AdditionalOptionForm component
 interface AdditionalOptionFormProps {
-  initialData?: Partial<AdditionalOptionFormValues>
+  initialData?: Partial<AdditionalOptionFormValues> & { id?: string }
   isEditing?: boolean
 }
 
@@ -116,10 +117,19 @@ export function AdditionalOptionForm({ initialData, isEditing = false }: Additio
     setIsSubmitting(true)
 
     try {
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 1000))
+      let result
 
-      console.log("Form submitted:", data)
+      if (isEditing && initialData?.id) {
+        // Update existing option
+        result = await updateAdditionalOption(initialData.id, data)
+      } else {
+        // Create new option
+        result = await createAdditionalOption(data)
+      }
+
+      if (result.error) {
+        throw new Error(result.error)
+      }
 
       // Show success message
       toast({
@@ -136,7 +146,7 @@ export function AdditionalOptionForm({ initialData, isEditing = false }: Additio
       console.error("Error submitting form:", error)
       toast({
         title: "Error",
-        description: "Something went wrong. Please try again.",
+        description: error instanceof Error ? error.message : "Something went wrong. Please try again.",
         variant: "destructive",
       })
     } finally {
