@@ -7,21 +7,18 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { MapPin, Plus } from "lucide-react"
 import dynamic from "next/dynamic"
-import { ErrorBoundary } from "react-error-boundary"
+import { ErrorBoundary } from "@/components/error-boundary"
 import { toast } from "@/components/ui/use-toast"
 import { getLocations } from "@/app/actions/location-actions"
 import type { Location } from "@/app/actions/location-actions"
 
 // Import with no SSR to avoid ref issues
-const LocationsTable = dynamic(
-  () => import("@/components/locations-table").then((mod) => ({ default: mod.LocationsTable })),
-  {
-    ssr: false,
-    loading: () => <div className="flex justify-center p-4">Loading locations table...</div>,
-  },
-)
+const LocationsTable = dynamic(() => import("@/components/locations-table"), {
+  ssr: false,
+  loading: () => <div className="flex justify-center p-4">Loading locations table...</div>,
+})
 
-function ErrorFallback() {
+function ErrorFallbackUI() {
   return (
     <div className="p-4 border border-red-200 rounded-md bg-red-50">
       <h3 className="text-lg font-medium text-red-800">Something went wrong</h3>
@@ -43,12 +40,22 @@ export default function LocationsPage() {
 
         if (error) {
           setError(error)
-          toast({
-            title: "Error loading locations",
-            description: error,
-            variant: "destructive",
-          })
-        } else {
+          if (error.includes("Database connection failed")) {
+            toast({
+              title: "Using demo data",
+              description: "Database connection failed. Using demo data instead.",
+              variant: "default",
+            })
+          } else {
+            toast({
+              title: "Error loading locations",
+              description: error,
+              variant: "destructive",
+            })
+          }
+        }
+
+        if (locations) {
           setLocations(locations)
         }
       } catch (err) {
@@ -103,7 +110,7 @@ export default function LocationsPage() {
               <CardDescription>View and manage all your rental locations</CardDescription>
             </CardHeader>
             <CardContent>
-              <ErrorBoundary FallbackComponent={ErrorFallback}>
+              <ErrorBoundary fallback={<ErrorFallbackUI />}>
                 <LocationsTable
                   locations={locations}
                   loading={loading}
@@ -128,7 +135,7 @@ export default function LocationsPage() {
               <CardDescription>View and manage active rental locations</CardDescription>
             </CardHeader>
             <CardContent>
-              <ErrorBoundary FallbackComponent={ErrorFallback}>
+              <ErrorBoundary fallback={<ErrorFallbackUI />}>
                 <LocationsTable
                   locations={locations.filter((loc) => loc.active)}
                   loading={loading}
@@ -153,7 +160,7 @@ export default function LocationsPage() {
               <CardDescription>View and manage inactive rental locations</CardDescription>
             </CardHeader>
             <CardContent>
-              <ErrorBoundary FallbackComponent={ErrorFallback}>
+              <ErrorBoundary fallback={<ErrorFallbackUI />}>
                 <LocationsTable
                   locations={locations.filter((loc) => !loc.active)}
                   loading={loading}

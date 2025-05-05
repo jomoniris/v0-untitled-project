@@ -32,7 +32,7 @@ CREATE INDEX IF NOT EXISTS idx_locations_name ON locations(name);
 CREATE INDEX IF NOT EXISTS idx_locations_code ON locations(code);
 CREATE INDEX IF NOT EXISTS idx_locations_active ON locations(active);
 
--- Insert sample data for locations
+-- Insert sample data
 INSERT INTO locations (
   code, name, metroplex, station_type, operating_hours, 
   tax1, tax2, address, city, postal_code, 
@@ -67,56 +67,4 @@ INSERT INTO locations (
   'USA', 'IL', 'chicago.downtown@example.com', '+1 (312) 555-1234', '+1 (312) 555-5678',
   '41.8781', '-87.6298', 'CHI-001', '30001',
   '2023-04-15', 'Sarah Williams', false
-)
-ON CONFLICT (id) DO NOTHING;
-
--- Create vehicle_groups table if it doesn't exist
-CREATE TABLE IF NOT EXISTS vehicle_groups (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  code VARCHAR(10) NOT NULL UNIQUE,
-  name VARCHAR(100) NOT NULL,
-  description TEXT,
-  active BOOLEAN DEFAULT TRUE,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-  updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
-);
-
--- Create additional_options table if it doesn't exist
-CREATE TABLE IF NOT EXISTS additional_options (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  code VARCHAR(10) NOT NULL UNIQUE,
-  name VARCHAR(100) NOT NULL,
-  description TEXT,
-  price DECIMAL(10, 2) NOT NULL,
-  tax_included BOOLEAN DEFAULT FALSE,
-  active BOOLEAN DEFAULT TRUE,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-  updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
-);
-
--- Create rate_zones table if it doesn't exist
-CREATE TABLE IF NOT EXISTS rate_zones (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  code VARCHAR(10) NOT NULL UNIQUE,
-  name VARCHAR(100) NOT NULL,
-  description TEXT,
-  active BOOLEAN DEFAULT TRUE,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-  updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
-);
-
--- Create rental_rates table if it doesn't exist
-CREATE TABLE IF NOT EXISTS rental_rates (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  code VARCHAR(10) NOT NULL UNIQUE,
-  name VARCHAR(100) NOT NULL,
-  description TEXT,
-  vehicle_group_id UUID REFERENCES vehicle_groups(id),
-  zone_id UUID REFERENCES rate_zones(id),
-  daily_rate DECIMAL(10, 2) NOT NULL,
-  weekly_rate DECIMAL(10, 2) NOT NULL,
-  monthly_rate DECIMAL(10, 2) NOT NULL,
-  active BOOLEAN DEFAULT TRUE,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-  updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );

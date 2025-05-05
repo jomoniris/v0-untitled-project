@@ -1,24 +1,33 @@
 "use server"
 
 import { revalidatePath } from "next/cache"
-import { sql } from "@/lib/db"
+import { neon } from "@neondatabase/serverless"
 import { z } from "zod"
+
+// Initialize the database connection
+const sql = neon(process.env.DATABASE_URL!)
 
 // Define the location schema for validation
 const locationSchema = z.object({
-  code: z.string().min(2).max(10),
-  name: z.string().min(3).max(100),
-  metroplex: z.string().min(1),
-  stationType: z.string().min(1),
-  operatingHours: z.string().min(1),
+  code: z
+    .string()
+    .min(2, { message: "Code must be at least 2 characters" })
+    .max(10, { message: "Code must not exceed 10 characters" }),
+  name: z
+    .string()
+    .min(3, { message: "Name must be at least 3 characters" })
+    .max(100, { message: "Name must not exceed 100 characters" }),
+  metroplex: z.string().min(1, { message: "Metroplex is required" }),
+  stationType: z.string().min(1, { message: "Station type is required" }),
+  operatingHours: z.string().min(1, { message: "Operating hours are required" }),
   tax1: z.string().optional(),
   tax2: z.string().optional(),
-  address: z.string().min(1),
-  city: z.string().min(1),
-  postalCode: z.string().min(1),
-  country: z.string().min(1),
-  state: z.string().min(1),
-  email: z.string().email().optional().or(z.literal("")),
+  address: z.string().min(1, { message: "Address is required" }),
+  city: z.string().min(1, { message: "City is required" }),
+  postalCode: z.string().min(1, { message: "Postal code is required" }),
+  country: z.string().min(1, { message: "Country is required" }),
+  state: z.string().min(1, { message: "State is required" }),
+  email: z.string().email({ message: "Invalid email address" }).optional().or(z.literal("")),
   telephone: z.string().optional(),
   fax: z.string().optional(),
   latitude: z.string().optional(),
@@ -36,7 +45,7 @@ export type Location = LocationFormValues & { id: string }
 // Get all locations
 export async function getLocations() {
   try {
-    const locations = await sql<Location[]>`
+    const locations = await sql`
       SELECT 
         id, 
         code, 
@@ -67,14 +76,69 @@ export async function getLocations() {
     return { locations, error: null }
   } catch (error) {
     console.error("Database error:", error)
-    return { locations: [], error: "Failed to fetch locations" }
+
+    // Fallback to static data if database is not available
+    const staticLocations = [
+      {
+        id: "1",
+        code: "NYC-DT",
+        name: "Downtown Office",
+        metroplex: "New York",
+        stationType: "Full Service",
+        operatingHours: "8:00 AM - 8:00 PM",
+        tax1: "8.875",
+        tax2: "0",
+        address: "123 Main St",
+        city: "New York",
+        postalCode: "10001",
+        country: "USA",
+        state: "NY",
+        email: "nyc.downtown@example.com",
+        telephone: "+1 (212) 555-1234",
+        fax: "+1 (212) 555-5678",
+        latitude: "40.7128",
+        longitude: "-74.0060",
+        nominalAccount: "NYC-001",
+        dbrNextNo: "10001",
+        dbrDate: "2023-04-15",
+        stationManager: "John Smith",
+        active: true,
+      },
+      {
+        id: "2",
+        code: "NYC-AP",
+        name: "Airport Terminal",
+        metroplex: "New York",
+        stationType: "Airport",
+        operatingHours: "24/7",
+        tax1: "8.875",
+        tax2: "0",
+        address: "JFK Airport, Terminal 4",
+        city: "New York",
+        postalCode: "11430",
+        country: "USA",
+        state: "NY",
+        email: "nyc.airport@example.com",
+        telephone: "+1 (212) 555-4321",
+        fax: "+1 (212) 555-8765",
+        latitude: "40.6413",
+        longitude: "-73.7781",
+        nominalAccount: "NYC-002",
+        dbrNextNo: "10002",
+        dbrDate: "2023-04-15",
+        stationManager: "Jane Doe",
+        active: true,
+      },
+    ]
+
+    return { locations: staticLocations, error: "Using static data. Database connection failed." }
   }
 }
 
 // Get a location by ID
 export async function getLocationById(id: string) {
   try {
-    const [location] = await sql<Location[]>`
+    const [location] = await sql`
       SELECT 
         id, 
         code, 
@@ -102,10 +166,46 @@ export async function getLocationById(id: string) {
       FROM locations
       WHERE id = ${id}
     `
+
+    if (!location) {
+      return { location: null, error: "Location not found" }
+    }
+
     return { location, error: null }
   } catch (error) {
     console.error("Database error:", error)
-    return { location: null, error: "Failed to fetch location" }
+
+    // Fallback to static data if database is not available
+    if (id === "1") {
+      const location = {
+        id: "1",
+        code: "NYC-DT",
+        name: "Downtown Office",
+        metroplex: "New York",
+        stationType: "Full Service",
+        operatingHours: "8:00 AM - 8:00 PM",
+        tax1: "8.875",
+        tax2: "0",
+        address: "123 Main St",
+        city: "New York",
+        postalCode: "10001",
+        country: "USA",
+        state: "NY",
+        email: "nyc.downtown@example.com",
+        telephone: "+1 (212) 555-1234",
+        fax: "+1 (212) 555-5678",
+        latitude: "40.7128",
+        longitude: "-74.0060",
+        nominalAccount: "NYC-001",
+        dbrNextNo: "10001",
+        dbrDate: "2023-04-15",
+        stationManager: "John Smith",
+        active: true,
+      }
+      return { location, error: "Using static data. Database connection failed." }
+    }
+
+    return { location: null, error: "Location not found or database error occurred" }
   }
 }
 
@@ -116,7 +216,7 @@ export async function createLocation(data: LocationFormValues) {
     const validatedData = locationSchema.parse(data)
 
     // Insert the location into the database
-    const [location] = await sql<Location[]>`
+    const [location] = await sql`
       INSERT INTO locations (
         code, 
         name, 
@@ -169,13 +269,13 @@ export async function createLocation(data: LocationFormValues) {
     `
 
     revalidatePath("/admin/company/locations")
-    return { location, error: null }
+    return { success: true, location, error: null }
   } catch (error) {
     console.error("Database error:", error)
     if (error instanceof z.ZodError) {
-      return { location: null, error: "Validation failed: " + JSON.stringify(error.errors) }
+      return { success: false, location: null, error: "Validation failed: " + JSON.stringify(error.errors) }
     }
-    return { location: null, error: "Failed to create location" }
+    return { success: false, location: null, error: "Failed to create location" }
   }
 }
 
@@ -186,7 +286,7 @@ export async function updateLocation(id: string, data: LocationFormValues) {
     const validatedData = locationSchema.parse(data)
 
     // Update the location in the database
-    const [location] = await sql<Location[]>`
+    const [location] = await sql`
       UPDATE locations
       SET 
         code = ${validatedData.code},
@@ -219,13 +319,13 @@ export async function updateLocation(id: string, data: LocationFormValues) {
     revalidatePath("/admin/company/locations")
     revalidatePath(`/admin/company/locations/${id}/view`)
     revalidatePath(`/admin/company/locations/${id}/edit`)
-    return { location, error: null }
+    return { success: true, location, error: null }
   } catch (error) {
     console.error("Database error:", error)
     if (error instanceof z.ZodError) {
-      return { location: null, error: "Validation failed: " + JSON.stringify(error.errors) }
+      return { success: false, location: null, error: "Validation failed: " + JSON.stringify(error.errors) }
     }
-    return { location: null, error: "Failed to update location" }
+    return { success: false, location: null, error: "Failed to update location" }
   }
 }
 
@@ -238,10 +338,10 @@ export async function deleteLocation(id: string) {
     `
 
     revalidatePath("/admin/company/locations")
-    return { error: null }
+    return { success: true, error: null }
   } catch (error) {
     console.error("Database error:", error)
-    return { error: "Failed to delete location" }
+    return { success: false, error: "Failed to delete location" }
   }
 }
 
@@ -255,9 +355,9 @@ export async function toggleLocationStatus(id: string, currentStatus: boolean) {
     `
 
     revalidatePath("/admin/company/locations")
-    return { error: null }
+    return { success: true, error: null }
   } catch (error) {
     console.error("Database error:", error)
-    return { error: "Failed to update location status" }
+    return { success: false, error: "Failed to update location status" }
   }
 }

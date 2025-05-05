@@ -59,7 +59,11 @@
     "vaul": "^0.9.6",
     "zod": "latest",
     "@tanstack/react-table": "latest",
-    "react-error-boundary": "latest"
+    "react-error-boundary": "latest",
+    "@neondatabase/serverless": "latest",
+    "fs": "latest",
+    "path": "latest",
+    "url": "latest"
   },
   "devDependencies": {
     "@types/node": "^22",

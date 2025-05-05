@@ -53,21 +53,21 @@ export function LocationsTable({
     setIsDeleting(true)
 
     try {
-      const { error } = await deleteLocation(locationToDelete.id)
+      const result = await deleteLocation(locationToDelete.id)
 
-      if (error) {
-        toast({
-          title: "Error",
-          description: error,
-          variant: "destructive",
-        })
-      } else {
+      if (result.success) {
         // Notify parent component about the deletion
         onLocationDeleted(locationToDelete.id)
 
         toast({
           title: "Location deleted",
           description: `Location ${locationToDelete.name} has been deleted successfully.`,
+        })
+      } else {
+        toast({
+          title: "Error",
+          description: result.error || "Failed to delete location. Please try again.",
+          variant: "destructive",
         })
       }
     } catch (error) {
@@ -92,21 +92,21 @@ export function LocationsTable({
 
   const toggleLocationStatusHandler = async (locationId: string, currentStatus: boolean) => {
     try {
-      const { error } = await toggleLocationStatus(locationId, currentStatus)
+      const result = await toggleLocationStatus(locationId, currentStatus)
 
-      if (error) {
-        toast({
-          title: "Error",
-          description: error,
-          variant: "destructive",
-        })
-      } else {
+      if (result.success) {
         // Notify parent component about the status change
         onLocationStatusChanged(locationId, !currentStatus)
 
         toast({
           title: "Status updated",
           description: `Location status has been ${!currentStatus ? "activated" : "deactivated"}.`,
+        })
+      } else {
+        toast({
+          title: "Error",
+          description: result.error || "Failed to update location status. Please try again.",
+          variant: "destructive",
         })
       }
     } catch (error) {
