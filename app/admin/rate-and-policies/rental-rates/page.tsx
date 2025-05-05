@@ -1,3 +1,6 @@
+"use client"
+
+import { useEffect, useState } from "react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -6,15 +9,39 @@ import { Plus } from "lucide-react"
 import { RentalRatesTable } from "@/components/rental-rates-table"
 import { getRentalRates } from "@/app/actions/rental-rate-actions"
 
-export default async function RentalRatesPage({
-  searchParams,
-}: {
-  searchParams: { tab?: string }
-}) {
-  // Fix: Use a default value directly instead of accessing searchParams.tab
-  const tabValue = typeof searchParams === "object" && searchParams ? searchParams.tab || "all" : "all"
+export default function RentalRatesPage() {
+  const [tabValue, setTabValue] = useState("all")
+  const [rates, setRates] = useState([])
+  const [error, setError] = useState<string | null>(null)
+  const [loading, setLoading] = useState(true)
 
-  const { rates, error } = await getRentalRates(tabValue)
+  useEffect(() => {
+    async function fetchRates() {
+      try {
+        setLoading(true)
+        const result = await getRentalRates(tabValue)
+        if (result.error) {
+          setError(result.error)
+          setRates([])
+        } else {
+          setRates(result.rates || [])
+          setError(null)
+        }
+      } catch (err) {
+        console.error("Error fetching rates:", err)
+        setError("Failed to load rental rates. Please try again.")
+        setRates([])
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchRates()
+  }, [tabValue])
+
+  const handleTabChange = (value: string) => {
+    setTabValue(value)
+  }
 
   return (
     <div className="space-y-6">
@@ -33,17 +60,11 @@ export default async function RentalRatesPage({
         </div>
       </div>
 
-      <Tabs defaultValue={tabValue} className="space-y-4">
+      <Tabs value={tabValue} onValueChange={handleTabChange} className="space-y-4">
         <TabsList>
-          <TabsTrigger value="all" asChild>
-            <Link href="/admin/rate-and-policies/rental-rates?tab=all">All Rates</Link>
-          </TabsTrigger>
-          <TabsTrigger value="active" asChild>
-            <Link href="/admin/rate-and-policies/rental-rates?tab=active">Active</Link>
-          </TabsTrigger>
-          <TabsTrigger value="inactive" asChild>
-            <Link href="/admin/rate-and-policies/rental-rates?tab=inactive">Inactive</Link>
-          </TabsTrigger>
+          <TabsTrigger value="all">All Rates</TabsTrigger>
+          <TabsTrigger value="active">Active</TabsTrigger>
+          <TabsTrigger value="inactive">Inactive</TabsTrigger>
         </TabsList>
         <TabsContent value={tabValue} className="space-y-4">
           <Card>
@@ -57,12 +78,16 @@ export default async function RentalRatesPage({
               </CardDescription>
             </CardHeader>
             <CardContent>
-              {error ? (
+              {loading ? (
+                <div className="p-4 text-center">
+                  <p className="text-muted-foreground">Loading rental rates...</p>
+                </div>
+              ) : error ? (
                 <div className="p-4 text-center">
                   <p className="text-red-500">{error}</p>
                 </div>
               ) : (
-                <RentalRatesTable rates={rates || []} />
+                <RentalRatesTable rates={rates} />
               )}
             </CardContent>
           </Card>

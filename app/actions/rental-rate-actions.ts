@@ -51,9 +51,15 @@ type AdditionalOption = {
 
 // Function to generate a unique rate ID
 async function generateRateId(): Promise<string> {
-  const result = await sql`SELECT MAX(CAST(SUBSTRING(rate_id, 6) AS INTEGER)) as max_id FROM rental_rates`
-  const maxId = result[0]?.max_id || 0
-  return `RATE-${String(maxId + 1).padStart(3, "0")}`
+  try {
+    const result = await sql`SELECT MAX(CAST(SUBSTRING(rate_id, 6) AS INTEGER)) as max_id FROM rental_rates`
+    const maxId = result[0]?.max_id || 0
+    return `RATE-${String(maxId + 1).padStart(3, "0")}`
+  } catch (error) {
+    console.error("Error generating rate ID:", error)
+    // Fallback to timestamp-based ID if there's an error
+    return `RATE-${Date.now().toString().slice(-6)}`
+  }
 }
 
 // Get all rental rates
@@ -164,7 +170,7 @@ async function getCarGroupRatesForRate(rateId: string) {
         cgr.policy_value_cdw as "policyValueCDW",
         cgr.deposit_rate_pai as "depositRatePAI",
         cgr.policy_value_pai as "policyValuePAI",
-        cgr.deposit_rate_scdw as "policyValueSCDW",
+        cgr.deposit_rate_scdw as "depositRateSCDW",
         cgr.policy_value_scdw as "policyValueSCDW",
         cgr.deposit_rate_cpp as "depositRateCPP",
         cgr.policy_value_cpp as "policyValueCPP",
