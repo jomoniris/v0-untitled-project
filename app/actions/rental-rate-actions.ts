@@ -84,7 +84,8 @@ export async function getRentalRates(filter = "all") {
 
     query += ` ORDER BY rr.created_at DESC`
 
-    const rates = await sql.unsafe(query)
+    const result = await sql.unsafe(query)
+    const rates = Array.isArray(result) ? result : []
 
     // For each rate, get the car group rates
     const ratesWithDetails = await Promise.all(
@@ -163,7 +164,7 @@ async function getCarGroupRatesForRate(rateId: string) {
         cgr.policy_value_cdw as "policyValueCDW",
         cgr.deposit_rate_pai as "depositRatePAI",
         cgr.policy_value_pai as "policyValuePAI",
-        cgr.deposit_rate_scdw as "depositRateSCDW",
+        cgr.deposit_rate_scdw as "policyValueSCDW",
         cgr.policy_value_scdw as "policyValueSCDW",
         cgr.deposit_rate_cpp as "depositRateCPP",
         cgr.policy_value_cpp as "policyValueCPP",
