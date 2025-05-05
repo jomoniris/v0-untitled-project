@@ -11,7 +11,7 @@ import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
 import { toast } from "@/components/ui/use-toast"
 import { Switch } from "@/components/ui/switch"
@@ -92,13 +92,42 @@ interface RentalRateFormProps {
   additionalOptions?: { id: string; code: string; description: string; optionType: string }[]
 }
 
+// Sample rate zones data
+const sampleRateZones = [
+  { id: "1", code: "NYC-DOWNTOWN", name: "New York Downtown" },
+  { id: "2", code: "NYC-MIDTOWN", name: "New York Midtown" },
+  { id: "3", code: "NYC-UPTOWN", name: "New York Uptown" },
+  { id: "4", code: "BOS-DOWNTOWN", name: "Boston Downtown" },
+]
+
+// Sample vehicle groups data
+const sampleVehicleGroups = [
+  { id: "1", name: "Economy" },
+  { id: "2", name: "Compact" },
+  { id: "3", name: "Mid-size" },
+  { id: "4", name: "Full-size" },
+  { id: "5", name: "SUV" },
+  { id: "6", name: "Premium" },
+  { id: "7", name: "Luxury" },
+  { id: "8", name: "SUV" },
+]
+
+// Sample additional options data
+const sampleAdditionalOptions = [
+  { id: "1", code: "GPS", description: "GPS Navigation System", optionType: "Equipment" },
+  { id: "2", code: "WIFI", description: "Mobile WiFi Hotspot", optionType: "Equipment" },
+  { id: "3", code: "CSEAT", description: "Child Safety Seat", optionType: "Equipment" },
+  { id: "4", code: "INSUR", description: "Additional Insurance", optionType: "Insurance" },
+  { id: "5", code: "ROADSIDE", description: "Roadside Assistance", optionType: "Service" },
+]
+
 export function RentalRateForm({
   initialData,
   isEditing = false,
   rateId,
-  rateZones = [],
-  vehicleGroups = [],
-  additionalOptions = [],
+  rateZones = sampleRateZones,
+  vehicleGroups = sampleVehicleGroups,
+  additionalOptions = sampleAdditionalOptions,
 }: RentalRateFormProps) {
   const router = useRouter()
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -173,36 +202,84 @@ export function RentalRateForm({
     setExpandedDayRates(initialDayRatesState)
   }, [vehicleGroups])
 
-  const toggleGroupExpanded = (groupId: string) => {
+  const toggleGroupExpanded = useCallback((groupId: string) => {
     setExpandedGroups((prev) => ({
       ...prev,
       [groupId]: !prev[groupId],
     }))
-  }
+  }, [])
 
-  const toggleDayRatesExpanded = (groupId: string) => {
+  const toggleDayRatesExpanded = useCallback((groupId: string) => {
     setExpandedDayRates((prev) => ({
       ...prev,
       [groupId]: !prev[groupId],
     }))
-  }
+  }, [])
 
-  const toggleGroupInclusion = (groupId: string, included: boolean) => {
-    const carGroupRates = form.getValues().carGroupRates
-    const updatedRates = carGroupRates.map((rate) => (rate.groupId === groupId ? { ...rate, included } : rate))
-    form.setValue("carGroupRates", updatedRates)
-  }
+  const toggleGroupInclusion = useCallback(
+    (groupId: string, included: boolean) => {
+      const carGroupRates = form.getValues().carGroupRates
+      const updatedRates = carGroupRates.map((rate) => (rate.groupId === groupId ? { ...rate, included } : rate))
+      form.setValue("carGroupRates", updatedRates, { shouldValidate: true })
+    },
+    [form],
+  )
 
-  const handleRateTypeChange = (groupId: string, type: "daily" | "weekly" | "monthly" | "yearly") => {
-    const carGroupRates = form.getValues().carGroupRates
-    const groupIndex = carGroupRates.findIndex((rate) => rate.groupId === groupId)
+  const handleRateTypeChange = useCallback(
+    (groupId: string, type: "daily" | "weekly" | "monthly" | "yearly") => {
+      const carGroupRates = form.getValues().carGroupRates
+      const groupIndex = carGroupRates.findIndex((rate) => rate.groupId === groupId)
 
-    if (groupIndex !== -1) {
-      const updatedRates = [...carGroupRates]
-      updatedRates[groupIndex].ratePackage.type = type
-      form.setValue("carGroupRates", updatedRates)
-    }
-  }
+      if (groupIndex !== -1) {
+        const updatedRates = [...carGroupRates]
+        updatedRates[groupIndex].ratePackage.type = type
+        form.setValue("carGroupRates", updatedRates, { shouldValidate: true })
+      }
+    },
+    [form],
+  )
+
+  const updateCarGroupRate = useCallback(
+    (index: number, field: string, value: number) => {
+      const updatedRates = [...form.getValues().carGroupRates]
+      // @ts-ignore - Dynamic field access
+      updatedRates[index][field] = value
+      form.setValue("carGroupRates", updatedRates, { shouldValidate: true })
+    },
+    [form],
+  )
+
+  const updateDailyRate = useCallback(
+    (groupIndex: number, dayIndex: number, value: number) => {
+      const updatedRates = [...form.getValues().carGroupRates]
+      if (!updatedRates[groupIndex].ratePackage.dailyRates) {
+        updatedRates[groupIndex].ratePackage.dailyRates = Array(30).fill(0)
+      }
+      updatedRates[groupIndex].ratePackage.dailyRates![dayIndex] = value
+      form.setValue("carGroupRates", updatedRates, { shouldValidate: true })
+    },
+    [form],
+  )
+
+  const updateRatePackageValue = useCallback(
+    (groupIndex: number, field: string, value: number) => {
+      const updatedRates = [...form.getValues().carGroupRates]
+      // @ts-ignore - Dynamic field access
+      updatedRates[groupIndex].ratePackage[field] = value
+      form.setValue("carGroupRates", updatedRates, { shouldValidate: true })
+    },
+    [form],
+  )
+
+  const updateAdditionalOption = useCallback(
+    (index: number, field: string, value: boolean) => {
+      const updatedOptions = [...form.getValues().additionalOptions]
+      // @ts-ignore - Dynamic field access
+      updatedOptions[index][field] = value
+      form.setValue("additionalOptions", updatedOptions, { shouldValidate: true })
+    },
+    [form],
+  )
 
   async function onSubmit(data: RentalRateFormValues) {
     setIsSubmitting(true)
@@ -313,7 +390,7 @@ export function RentalRateForm({
                         render={({ field }) => (
                           <FormItem>
                             <FormLabel>Rate Zone</FormLabel>
-                            <Select onValueChange={field.onChange} value={field.value || ""}>
+                            <Select defaultValue={field.value} onValueChange={field.onChange}>
                               <FormControl>
                                 <SelectTrigger>
                                   <SelectValue placeholder="Select rate zone" />
@@ -436,7 +513,7 @@ export function RentalRateForm({
                                   <Checkbox
                                     checked={carGroup.included}
                                     onCheckedChange={(checked) =>
-                                      toggleGroupInclusion(carGroup.groupId, checked as boolean)
+                                      toggleGroupInclusion(carGroup.groupId, checked === true)
                                     }
                                   />
                                 </TableCell>
@@ -446,11 +523,9 @@ export function RentalRateForm({
                                     type="number"
                                     min={0}
                                     value={carGroup.milesPerDay}
-                                    onChange={(e) => {
-                                      const updatedRates = [...form.getValues().carGroupRates]
-                                      updatedRates[index].milesPerDay = e.target.valueAsNumber || 0
-                                      form.setValue("carGroupRates", updatedRates)
-                                    }}
+                                    onChange={(e) =>
+                                      updateCarGroupRate(index, "milesPerDay", e.target.valueAsNumber || 0)
+                                    }
                                     className="w-20"
                                   />
                                 </TableCell>
@@ -460,17 +535,15 @@ export function RentalRateForm({
                                     min={0}
                                     step="0.01"
                                     value={carGroup.milesRate}
-                                    onChange={(e) => {
-                                      const updatedRates = [...form.getValues().carGroupRates]
-                                      updatedRates[index].milesRate = e.target.valueAsNumber || 0
-                                      form.setValue("carGroupRates", updatedRates)
-                                    }}
+                                    onChange={(e) =>
+                                      updateCarGroupRate(index, "milesRate", e.target.valueAsNumber || 0)
+                                    }
                                     className="w-20"
                                   />
                                 </TableCell>
                                 <TableCell>
                                   <Select
-                                    value={carGroup.ratePackage.type}
+                                    defaultValue={carGroup.ratePackage.type}
                                     onValueChange={(value) =>
                                       handleRateTypeChange(
                                         carGroup.groupId,
@@ -522,11 +595,13 @@ export function RentalRateForm({
                                                 min={0}
                                                 step="0.01"
                                                 value={carGroup.depositRateCDW}
-                                                onChange={(e) => {
-                                                  const updatedRates = [...form.getValues().carGroupRates]
-                                                  updatedRates[index].depositRateCDW = e.target.valueAsNumber || 0
-                                                  form.setValue("carGroupRates", updatedRates)
-                                                }}
+                                                onChange={(e) =>
+                                                  updateCarGroupRate(
+                                                    index,
+                                                    "depositRateCDW",
+                                                    e.target.valueAsNumber || 0,
+                                                  )
+                                                }
                                               />
                                             </div>
                                             <div>
@@ -536,11 +611,13 @@ export function RentalRateForm({
                                                 min={0}
                                                 step="0.01"
                                                 value={carGroup.policyValueCDW}
-                                                onChange={(e) => {
-                                                  const updatedRates = [...form.getValues().carGroupRates]
-                                                  updatedRates[index].policyValueCDW = e.target.valueAsNumber || 0
-                                                  form.setValue("carGroupRates", updatedRates)
-                                                }}
+                                                onChange={(e) =>
+                                                  updateCarGroupRate(
+                                                    index,
+                                                    "policyValueCDW",
+                                                    e.target.valueAsNumber || 0,
+                                                  )
+                                                }
                                               />
                                             </div>
 
@@ -551,11 +628,13 @@ export function RentalRateForm({
                                                 min={0}
                                                 step="0.01"
                                                 value={carGroup.depositRatePAI}
-                                                onChange={(e) => {
-                                                  const updatedRates = [...form.getValues().carGroupRates]
-                                                  updatedRates[index].depositRatePAI = e.target.valueAsNumber || 0
-                                                  form.setValue("carGroupRates", updatedRates)
-                                                }}
+                                                onChange={(e) =>
+                                                  updateCarGroupRate(
+                                                    index,
+                                                    "depositRatePAI",
+                                                    e.target.valueAsNumber || 0,
+                                                  )
+                                                }
                                               />
                                             </div>
                                             <div>
@@ -565,11 +644,13 @@ export function RentalRateForm({
                                                 min={0}
                                                 step="0.01"
                                                 value={carGroup.policyValuePAI}
-                                                onChange={(e) => {
-                                                  const updatedRates = [...form.getValues().carGroupRates]
-                                                  updatedRates[index].policyValuePAI = e.target.valueAsNumber || 0
-                                                  form.setValue("carGroupRates", updatedRates)
-                                                }}
+                                                onChange={(e) =>
+                                                  updateCarGroupRate(
+                                                    index,
+                                                    "policyValuePAI",
+                                                    e.target.valueAsNumber || 0,
+                                                  )
+                                                }
                                               />
                                             </div>
 
@@ -580,11 +661,13 @@ export function RentalRateForm({
                                                 min={0}
                                                 step="0.01"
                                                 value={carGroup.depositRateSCDW}
-                                                onChange={(e) => {
-                                                  const updatedRates = [...form.getValues().carGroupRates]
-                                                  updatedRates[index].depositRateSCDW = e.target.valueAsNumber || 0
-                                                  form.setValue("carGroupRates", updatedRates)
-                                                }}
+                                                onChange={(e) =>
+                                                  updateCarGroupRate(
+                                                    index,
+                                                    "depositRateSCDW",
+                                                    e.target.valueAsNumber || 0,
+                                                  )
+                                                }
                                               />
                                             </div>
                                             <div>
@@ -594,11 +677,13 @@ export function RentalRateForm({
                                                 min={0}
                                                 step="0.01"
                                                 value={carGroup.policyValueSCDW}
-                                                onChange={(e) => {
-                                                  const updatedRates = [...form.getValues().carGroupRates]
-                                                  updatedRates[index].policyValueSCDW = e.target.valueAsNumber || 0
-                                                  form.setValue("carGroupRates", updatedRates)
-                                                }}
+                                                onChange={(e) =>
+                                                  updateCarGroupRate(
+                                                    index,
+                                                    "policyValueSCDW",
+                                                    e.target.valueAsNumber || 0,
+                                                  )
+                                                }
                                               />
                                             </div>
 
@@ -609,11 +694,13 @@ export function RentalRateForm({
                                                 min={0}
                                                 step="0.01"
                                                 value={carGroup.depositRateCPP}
-                                                onChange={(e) => {
-                                                  const updatedRates = [...form.getValues().carGroupRates]
-                                                  updatedRates[index].depositRateCPP = e.target.valueAsNumber || 0
-                                                  form.setValue("carGroupRates", updatedRates)
-                                                }}
+                                                onChange={(e) =>
+                                                  updateCarGroupRate(
+                                                    index,
+                                                    "depositRateCPP",
+                                                    e.target.valueAsNumber || 0,
+                                                  )
+                                                }
                                               />
                                             </div>
                                             <div>
@@ -623,11 +710,13 @@ export function RentalRateForm({
                                                 min={0}
                                                 step="0.01"
                                                 value={carGroup.policyValueCPP}
-                                                onChange={(e) => {
-                                                  const updatedRates = [...form.getValues().carGroupRates]
-                                                  updatedRates[index].policyValueCPP = e.target.valueAsNumber || 0
-                                                  form.setValue("carGroupRates", updatedRates)
-                                                }}
+                                                onChange={(e) =>
+                                                  updateCarGroupRate(
+                                                    index,
+                                                    "policyValueCPP",
+                                                    e.target.valueAsNumber || 0,
+                                                  )
+                                                }
                                               />
                                             </div>
                                           </div>
@@ -642,11 +731,13 @@ export function RentalRateForm({
                                               min={0}
                                               step="0.01"
                                               value={carGroup.deliveryCharges}
-                                              onChange={(e) => {
-                                                const updatedRates = [...form.getValues().carGroupRates]
-                                                updatedRates[index].deliveryCharges = e.target.valueAsNumber || 0
-                                                form.setValue("carGroupRates", updatedRates)
-                                              }}
+                                              onChange={(e) =>
+                                                updateCarGroupRate(
+                                                  index,
+                                                  "deliveryCharges",
+                                                  e.target.valueAsNumber || 0,
+                                                )
+                                              }
                                             />
                                           </div>
                                         </div>
@@ -680,15 +771,9 @@ export function RentalRateForm({
                                                       min={0}
                                                       step="0.01"
                                                       value={carGroup.ratePackage.dailyRates?.[dayIndex] || 0}
-                                                      onChange={(e) => {
-                                                        const updatedRates = [...form.getValues().carGroupRates]
-                                                        if (!updatedRates[index].ratePackage.dailyRates) {
-                                                          updatedRates[index].ratePackage.dailyRates = Array(30).fill(0)
-                                                        }
-                                                        updatedRates[index].ratePackage.dailyRates![dayIndex] =
-                                                          e.target.valueAsNumber || 0
-                                                        form.setValue("carGroupRates", updatedRates)
-                                                      }}
+                                                      onChange={(e) =>
+                                                        updateDailyRate(index, dayIndex, e.target.valueAsNumber || 0)
+                                                      }
                                                     />
                                                   </div>
                                                 ))}
@@ -703,15 +788,9 @@ export function RentalRateForm({
                                                       min={0}
                                                       step="0.01"
                                                       value={carGroup.ratePackage.dailyRates?.[dayIndex] || 0}
-                                                      onChange={(e) => {
-                                                        const updatedRates = [...form.getValues().carGroupRates]
-                                                        if (!updatedRates[index].ratePackage.dailyRates) {
-                                                          updatedRates[index].ratePackage.dailyRates = Array(30).fill(0)
-                                                        }
-                                                        updatedRates[index].ratePackage.dailyRates![dayIndex] =
-                                                          e.target.valueAsNumber || 0
-                                                        form.setValue("carGroupRates", updatedRates)
-                                                      }}
+                                                      onChange={(e) =>
+                                                        updateDailyRate(index, dayIndex, e.target.valueAsNumber || 0)
+                                                      }
                                                     />
                                                   </div>
                                                 ))}
@@ -728,11 +807,9 @@ export function RentalRateForm({
                                               min={0}
                                               step="0.01"
                                               value={carGroup.ratePackage.weeklyRate || 0}
-                                              onChange={(e) => {
-                                                const updatedRates = [...form.getValues().carGroupRates]
-                                                updatedRates[index].ratePackage.weeklyRate = e.target.valueAsNumber || 0
-                                                form.setValue("carGroupRates", updatedRates)
-                                              }}
+                                              onChange={(e) =>
+                                                updateRatePackageValue(index, "weeklyRate", e.target.valueAsNumber || 0)
+                                              }
                                               className="mt-1"
                                             />
                                           </div>
@@ -746,12 +823,13 @@ export function RentalRateForm({
                                               min={0}
                                               step="0.01"
                                               value={carGroup.ratePackage.monthlyRate || 0}
-                                              onChange={(e) => {
-                                                const updatedRates = [...form.getValues().carGroupRates]
-                                                updatedRates[index].ratePackage.monthlyRate =
-                                                  e.target.valueAsNumber || 0
-                                                form.setValue("carGroupRates", updatedRates)
-                                              }}
+                                              onChange={(e) =>
+                                                updateRatePackageValue(
+                                                  index,
+                                                  "monthlyRate",
+                                                  e.target.valueAsNumber || 0,
+                                                )
+                                              }
                                               className="mt-1"
                                             />
                                           </div>
@@ -765,11 +843,9 @@ export function RentalRateForm({
                                               min={0}
                                               step="0.01"
                                               value={carGroup.ratePackage.yearlyRate || 0}
-                                              onChange={(e) => {
-                                                const updatedRates = [...form.getValues().carGroupRates]
-                                                updatedRates[index].ratePackage.yearlyRate = e.target.valueAsNumber || 0
-                                                form.setValue("carGroupRates", updatedRates)
-                                              }}
+                                              onChange={(e) =>
+                                                updateRatePackageValue(index, "yearlyRate", e.target.valueAsNumber || 0)
+                                              }
                                               className="mt-1"
                                             />
                                           </div>
@@ -811,21 +887,17 @@ export function RentalRateForm({
                             <TableCell>
                               <Checkbox
                                 checked={option.included}
-                                onCheckedChange={(checked) => {
-                                  const updatedOptions = [...form.getValues().additionalOptions]
-                                  updatedOptions[index].included = !!checked
-                                  form.setValue("additionalOptions", updatedOptions)
-                                }}
+                                onCheckedChange={(checked) =>
+                                  updateAdditionalOption(index, "included", checked === true)
+                                }
                               />
                             </TableCell>
                             <TableCell>
                               <Checkbox
                                 checked={option.customerPays}
-                                onCheckedChange={(checked) => {
-                                  const updatedOptions = [...form.getValues().additionalOptions]
-                                  updatedOptions[index].customerPays = !!checked
-                                  form.setValue("additionalOptions", updatedOptions)
-                                }}
+                                onCheckedChange={(checked) =>
+                                  updateAdditionalOption(index, "customerPays", checked === true)
+                                }
                               />
                             </TableCell>
                             <TableCell>{option.code}</TableCell>
