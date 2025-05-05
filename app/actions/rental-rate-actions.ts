@@ -291,7 +291,8 @@ export async function createRentalRate(formData: FormData) {
     `
 
     if (rateZoneResult.length === 0) {
-      return { error: "Invalid rate zone" }
+      console.error(`Rate zone with code "${validatedData.rateZone}" not found in database`)
+      return { error: `Invalid rate zone: "${validatedData.rateZone}" not found` }
     }
 
     const rateZoneId = rateZoneResult[0].id

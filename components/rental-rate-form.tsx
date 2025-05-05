@@ -87,47 +87,18 @@ interface RentalRateFormProps {
   initialData?: Partial<RentalRateFormValues>
   isEditing?: boolean
   rateId?: string
-  rateZones?: { id: string; code: string; name: string }[]
-  vehicleGroups?: { id: string; name: string }[]
-  additionalOptions?: { id: string; code: string; description: string; optionType: string }[]
+  rateZones: { id: string; code: string; name: string }[]
+  vehicleGroups: { id: string; name: string }[]
+  additionalOptions: { id: string; code: string; description: string; optionType: string }[]
 }
-
-// Sample rate zones data
-const sampleRateZones = [
-  { id: "1", code: "NYC-DOWNTOWN", name: "New York Downtown" },
-  { id: "2", code: "NYC-MIDTOWN", name: "New York Midtown" },
-  { id: "3", code: "NYC-UPTOWN", name: "New York Uptown" },
-  { id: "4", code: "BOS-DOWNTOWN", name: "Boston Downtown" },
-]
-
-// Sample vehicle groups data
-const sampleVehicleGroups = [
-  { id: "1", name: "Economy" },
-  { id: "2", name: "Compact" },
-  { id: "3", name: "Mid-size" },
-  { id: "4", name: "Full-size" },
-  { id: "5", name: "SUV" },
-  { id: "6", name: "Premium" },
-  { id: "7", name: "Luxury" },
-  { id: "8", name: "SUV" },
-]
-
-// Sample additional options data
-const sampleAdditionalOptions = [
-  { id: "1", code: "GPS", description: "GPS Navigation System", optionType: "Equipment" },
-  { id: "2", code: "WIFI", description: "Mobile WiFi Hotspot", optionType: "Equipment" },
-  { id: "3", code: "CSEAT", description: "Child Safety Seat", optionType: "Equipment" },
-  { id: "4", code: "INSUR", description: "Additional Insurance", optionType: "Insurance" },
-  { id: "5", code: "ROADSIDE", description: "Roadside Assistance", optionType: "Service" },
-]
 
 export function RentalRateForm({
   initialData,
   isEditing = false,
   rateId,
-  rateZones = sampleRateZones,
-  vehicleGroups = sampleVehicleGroups,
-  additionalOptions = sampleAdditionalOptions,
+  rateZones = [],
+  vehicleGroups = [],
+  additionalOptions = [],
 }: RentalRateFormProps) {
   const router = useRouter()
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -174,12 +145,40 @@ export function RentalRateForm({
     rateName: "",
     pickupStartDate: new Date().toISOString().split("T")[0],
     pickupEndDate: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString().split("T")[0],
-    rateZone: "",
+    rateZone: rateZones.length > 0 ? rateZones[0].code : "",
     bookingStartDate: new Date().toISOString().split("T")[0],
     bookingEndDate: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString().split("T")[0],
     active: true,
-    carGroupRates: defaultCarGroupRates,
-    additionalOptions: defaultAdditionalOptionsData,
+    carGroupRates: vehicleGroups.map((group) => ({
+      groupId: group.id.toString(),
+      groupName: group.name,
+      milesPerDay: 0,
+      milesRate: 0,
+      depositRateCDW: 0,
+      policyValueCDW: 0,
+      depositRatePAI: 0,
+      policyValuePAI: 0,
+      depositRateSCDW: 0,
+      policyValueSCDW: 0,
+      depositRateCPP: 0,
+      policyValueCPP: 0,
+      deliveryCharges: 0,
+      ratePackage: {
+        type: "daily" as const,
+        dailyRates: Array(30).fill(0),
+        weeklyRate: 0,
+        monthlyRate: 0,
+        yearlyRate: 0,
+      },
+      included: group.id === "1", // Only include Economy by default
+    })),
+    additionalOptions: additionalOptions.map((option) => ({
+      id: option.id.toString(),
+      code: option.code,
+      description: option.description,
+      included: false,
+      customerPays: true,
+    })),
     ...initialData,
   }
 
