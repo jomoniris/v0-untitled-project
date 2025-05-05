@@ -1,317 +1,107 @@
 "use client"
 
-import React from "react"
-
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
-import { z } from "zod"
+import * as z from "zod"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import Link from "next/link"
-import { useRouter } from "next/navigation"
-import { useState, useEffect, useCallback } from "react"
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
-import { toast } from "@/components/ui/use-toast"
-import { Switch } from "@/components/ui/switch"
-import { Checkbox } from "@/components/ui/checkbox"
-import { ChevronDown, ChevronUp } from "lucide-react"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Input } from "@/components/ui/input"
+import { useToast } from "@/components/ui/use-toast"
+import { useRouter } from "next/navigation"
 import { createRentalRate, updateRentalRate } from "@/app/actions/rental-rate-actions"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Textarea } from "@/components/ui/textarea"
+import { Checkbox } from "@/components/ui/checkbox"
+import { useState } from "react"
 
-// Define rate package type
-const ratePackageSchema = z.object({
-  type: z.enum(["daily", "weekly", "monthly", "yearly"]),
-  dailyRates: z.array(z.number().min(0)).optional(),
-  weeklyRate: z.number().min(0).optional(),
-  monthlyRate: z.number().min(0).optional(),
-  yearlyRate: z.number().min(0).optional(),
-})
-
-// Define additional option schema
-const additionalOptionSchema = z.object({
-  id: z.string(),
-  code: z.string(),
-  description: z.string(),
-  included: z.boolean().default(false),
-  customerPays: z.boolean().default(true),
-})
-
-// Define the car group rate schema
-const carGroupRateSchema = z.object({
-  groupId: z.string(),
-  groupName: z.string(),
-  milesPerDay: z.number().min(0),
-  milesRate: z.number().min(0),
-  depositRateCDW: z.number().min(0),
-  policyValueCDW: z.number().min(0).default(0),
-  depositRatePAI: z.number().min(0),
-  policyValuePAI: z.number().min(0).default(0),
-  depositRateSCDW: z.number().min(0),
-  policyValueSCDW: z.number().min(0).default(0),
-  depositRateCPP: z.number().min(0),
-  policyValueCPP: z.number().min(0).default(0),
-  deliveryCharges: z.number().min(0),
-  ratePackage: ratePackageSchema,
-  included: z.boolean().default(true),
-})
-
-// Define the form schema with validation
-const rentalRateFormSchema = z.object({
-  // Rate Information
-  rateName: z.string().min(3, {
-    message: "Rate name must be at least 3 characters.",
+// Define the form schema
+const rentalRateSchema = z.object({
+  name: z.string().min(2, {
+    message: "Name must be at least 2 characters.",
   }),
-  pickupStartDate: z.string(),
-  pickupEndDate: z.string(),
-  rateZone: z.string({
-    required_error: "Rate zone is required.",
+  description: z.string().optional(),
+  vehicleGroupId: z.string().min(1, {
+    message: "Vehicle group is required.",
   }),
-  bookingStartDate: z.string(),
-  bookingEndDate: z.string(),
-  active: z.boolean().default(true),
-
-  // Car Group Rates
-  carGroupRates: z.array(carGroupRateSchema),
-
-  // Additional Options (common for all car groups)
-  additionalOptions: z.array(additionalOptionSchema).default([]),
+  dailyRate: z.coerce.number().min(0, {
+    message: "Daily rate must be a positive number.",
+  }),
+  weeklyRate: z.coerce.number().min(0, {
+    message: "Weekly rate must be a positive number.",
+  }),
+  monthlyRate: z.coerce.number().min(0, {
+    message: "Monthly rate must be a positive number.",
+  }),
+  weekendRate: z.coerce.number().min(0, {
+    message: "Weekend rate must be a positive number.",
+  }),
+  isActive: z.boolean().default(true),
 })
 
-type RentalRateFormValues = z.infer<typeof rentalRateFormSchema>
+export type RentalRateFormValues = z.infer<typeof rentalRateSchema>
 
-// This type defines the props for the RentalRateForm component
-interface RentalRateFormProps {
-  initialData?: Partial<RentalRateFormValues>
-  isEditing?: boolean
-  rateId?: string
-  rateZones?: { id: string; code: string; name: string }[]
-  vehicleGroups?: { id: string; name: string }[]
-  additionalOptions?: { id: string; code: string; description: string; optionType: string }[]
-}
+// This can come from your database
+const vehicleGroups = [
+  { id: "1", name: "Economy" },
+  { id: "2", name: "Compact" },
+  { id: "3", name: "Mid-size" },
+  { id: "4", name: "Full-size" },
+  { id: "5", name: "SUV" },
+  { id: "6", name: "Luxury" },
+]
 
 export function RentalRateForm({
   initialData,
-  isEditing = false,
-  rateId,
-  rateZones = [],
-  vehicleGroups = [],
-  additionalOptions = [],
-}: RentalRateFormProps) {
+}: {
+  initialData?: RentalRateFormValues
+}) {
+  const { toast } = useToast()
   const router = useRouter()
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({})
-  const [expandedDayRates, setExpandedDayRates] = useState<Record<string, boolean>>({})
-  const [activeTab, setActiveTab] = useState<string>("rate-info")
 
-  // Initialize car group rates with default values
-  const defaultCarGroupRates = vehicleGroups.map((group) => ({
-    groupId: group.id.toString(),
-    groupName: group.name,
-    milesPerDay: 0,
-    milesRate: 0,
-    depositRateCDW: 0,
-    policyValueCDW: 0,
-    depositRatePAI: 0,
-    policyValuePAI: 0,
-    depositRateSCDW: 0,
-    policyValueSCDW: 0,
-    depositRateCPP: 0,
-    policyValueCPP: 0,
-    deliveryCharges: 0,
-    ratePackage: {
-      type: "daily" as const,
-      dailyRates: Array(30).fill(0),
+  // Initialize the form with default values or initial data
+  const form = useForm<RentalRateFormValues>({
+    resolver: zodResolver(rentalRateSchema),
+    defaultValues: initialData || {
+      name: "",
+      description: "",
+      vehicleGroupId: "",
+      dailyRate: 0,
       weeklyRate: 0,
       monthlyRate: 0,
-      yearlyRate: 0,
+      weekendRate: 0,
+      isActive: true,
     },
-    included: group.id === "1", // Only include Economy by default
-  }))
-
-  // Initialize additional options with default values
-  const defaultAdditionalOptionsData = additionalOptions.map((option) => ({
-    id: option.id.toString(),
-    code: option.code,
-    description: option.description,
-    included: false,
-    customerPays: true,
-  }))
-
-  // Default form values
-  const defaultValues: Partial<RentalRateFormValues> = {
-    rateName: "",
-    pickupStartDate: new Date().toISOString().split("T")[0],
-    pickupEndDate: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString().split("T")[0],
-    rateZone: "",
-    bookingStartDate: new Date().toISOString().split("T")[0],
-    bookingEndDate: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString().split("T")[0],
-    active: true,
-    carGroupRates: defaultCarGroupRates,
-    additionalOptions: defaultAdditionalOptionsData,
-    ...initialData,
-  }
-
-  const form = useForm<RentalRateFormValues>({
-    resolver: zodResolver(rentalRateFormSchema),
-    defaultValues,
   })
 
-  // Initialize expanded state for all groups
-  useEffect(() => {
-    const initialExpandedState: Record<string, boolean> = {}
-    const initialDayRatesState: Record<string, boolean> = {}
-
-    vehicleGroups.forEach((group) => {
-      initialExpandedState[group.id] = false
-      initialDayRatesState[group.id] = false
-    })
-
-    setExpandedGroups(initialExpandedState)
-    setExpandedDayRates(initialDayRatesState)
-  }, [vehicleGroups])
-
-  const toggleGroupExpanded = useCallback((groupId: string) => {
-    setExpandedGroups((prev) => ({
-      ...prev,
-      [groupId]: !prev[groupId],
-    }))
-  }, [])
-
-  const toggleDayRatesExpanded = useCallback((groupId: string) => {
-    setExpandedDayRates((prev) => ({
-      ...prev,
-      [groupId]: !prev[groupId],
-    }))
-  }, [])
-
-  const toggleGroupInclusion = useCallback(
-    (groupId: string, included: boolean) => {
-      const carGroupRates = form.getValues().carGroupRates
-      const updatedRates = carGroupRates.map((rate) => (rate.groupId === groupId ? { ...rate, included } : rate))
-      form.setValue("carGroupRates", updatedRates)
-    },
-    [form],
-  )
-
-  const handleRateTypeChange = useCallback(
-    (groupId: string, type: "daily" | "weekly" | "monthly" | "yearly") => {
-      const carGroupRates = form.getValues().carGroupRates
-      const groupIndex = carGroupRates.findIndex((rate) => rate.groupId === groupId)
-
-      if (groupIndex !== -1) {
-        const updatedRates = [...carGroupRates]
-        updatedRates[groupIndex].ratePackage.type = type
-        form.setValue("carGroupRates", updatedRates)
-      }
-    },
-    [form],
-  )
-
-  const handleDailyRateChange = useCallback(
-    (index: number, dayIndex: number, value: number) => {
-      const updatedRates = [...form.getValues().carGroupRates]
-      if (!updatedRates[index].ratePackage.dailyRates) {
-        updatedRates[index].ratePackage.dailyRates = Array(30).fill(0)
-      }
-      updatedRates[index].ratePackage.dailyRates![dayIndex] = value
-      form.setValue("carGroupRates", updatedRates)
-    },
-    [form],
-  )
-
-  const handleMilesPerDayChange = useCallback(
-    (index: number, value: number) => {
-      const updatedRates = [...form.getValues().carGroupRates]
-      updatedRates[index].milesPerDay = value
-      form.setValue("carGroupRates", updatedRates)
-    },
-    [form],
-  )
-
-  const handleMilesRateChange = useCallback(
-    (index: number, value: number) => {
-      const updatedRates = [...form.getValues().carGroupRates]
-      updatedRates[index].milesRate = value
-      form.setValue("carGroupRates", updatedRates)
-    },
-    [form],
-  )
-
-  const handleInsuranceRateChange = useCallback(
-    (index: number, field: string, value: number) => {
-      const updatedRates = [...form.getValues().carGroupRates]
-      updatedRates[index][field as keyof (typeof updatedRates)[0]] = value
-      form.setValue("carGroupRates", updatedRates)
-    },
-    [form],
-  )
-
-  const handleOptionChange = useCallback(
-    (index: number, field: string, value: boolean) => {
-      const updatedOptions = [...form.getValues().additionalOptions]
-      updatedOptions[index][field as keyof (typeof updatedOptions)[0]] = value
-      form.setValue("additionalOptions", updatedOptions)
-    },
-    [form],
-  )
-
+  // Handle form submission
   async function onSubmit(data: RentalRateFormValues) {
-    setIsSubmitting(true)
-
     try {
-      // Create FormData object
-      const formData = new FormData()
+      setIsSubmitting(true)
 
-      // Add basic rate information
-      formData.append("rateName", data.rateName)
-      formData.append("pickupStartDate", data.pickupStartDate)
-      formData.append("pickupEndDate", data.pickupEndDate)
-      formData.append("rateZone", data.rateZone)
-      formData.append("bookingStartDate", data.bookingStartDate)
-      formData.append("bookingEndDate", data.bookingEndDate)
-      formData.append("active", data.active.toString())
-
-      // Add car group rates as JSON
-      formData.append("carGroupRates", JSON.stringify(data.carGroupRates))
-
-      // Add additional options as JSON
-      formData.append("additionalOptions", JSON.stringify(data.additionalOptions))
-
-      let result
-
-      if (isEditing && rateId) {
-        // Update existing rate
-        result = await updateRentalRate(rateId, formData)
-      } else {
-        // Create new rate
-        result = await createRentalRate(formData)
-      }
-
-      if (result.error) {
+      if (initialData) {
+        // Update existing rental rate
+        await updateRentalRate(data)
         toast({
-          title: "Error",
-          description: result.error,
-          variant: "destructive",
+          title: "Rental rate updated",
+          description: "The rental rate has been updated successfully.",
         })
       } else {
-        // Show success message
+        // Create new rental rate
+        await createRentalRate(data)
         toast({
-          title: isEditing ? "Rate updated" : "Rate created",
-          description: result.message,
+          title: "Rental rate created",
+          description: "The rental rate has been created successfully.",
         })
-
-        // Redirect back to rates list
-        router.push("/admin/rate-and-policies/rental-rates")
-        router.refresh()
       }
+
+      // Redirect to rental rates list
+      router.push("/admin/rate-and-policies/rental-rates")
     } catch (error) {
       console.error("Error submitting form:", error)
       toast({
         title: "Error",
-        description: "Something went wrong. Please try again.",
+        description: "An error occurred. Please try again.",
         variant: "destructive",
       })
     } finally {
@@ -321,585 +111,153 @@ export function RentalRateForm({
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)}>
-        <div className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>{isEditing ? "Edit Rental Rate" : "New Rental Rate"}</CardTitle>
-              <CardDescription>
-                {isEditing ? "Update rental rate information" : "Enter details for the new rental rate"}
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <Tabs value={activeTab} onValueChange={setActiveTab}>
-                <TabsList className="grid w-full grid-cols-2">
-                  <TabsTrigger value="rate-info">Rate Information</TabsTrigger>
-                  <TabsTrigger value="additional-options">Additional Options</TabsTrigger>
-                </TabsList>
+      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <FormField
+            control={form.control}
+            name="name"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Rate Name</FormLabel>
+                <FormControl>
+                  <Input placeholder="Enter rate name" {...field} />
+                </FormControl>
+                <FormDescription>The name of the rental rate plan.</FormDescription>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
 
-                {/* Rate Information Tab */}
-                <TabsContent value="rate-info" className="space-y-6">
-                  {/* Basic Rate Information Section */}
-                  <div className="space-y-4">
-                    <h3 className="text-lg font-medium">Basic Information</h3>
+          <FormField
+            control={form.control}
+            name="vehicleGroupId"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Vehicle Group</FormLabel>
+                <Select
+                  onValueChange={field.onChange}
+                  value={field.value || ""} // Ensure we have a string value
+                >
+                  <FormControl>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select a vehicle group" />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    {vehicleGroups.map((group) => (
+                      <SelectItem key={group.id} value={group.id}>
+                        {group.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <FormDescription>The vehicle group this rate applies to.</FormDescription>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </div>
 
-                    <FormField
-                      control={form.control}
-                      name="rateName"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Rate Name</FormLabel>
-                          <FormControl>
-                            <Input placeholder="Enter rate name" {...field} />
-                          </FormControl>
-                          <FormDescription>
-                            A descriptive name for this rate (e.g., "Summer 2023 Special")
-                          </FormDescription>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
+        <FormField
+          control={form.control}
+          name="description"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Description</FormLabel>
+              <FormControl>
+                <Textarea
+                  placeholder="Enter rate description"
+                  {...field}
+                  value={field.value || ""} // Ensure we have a string value
+                />
+              </FormControl>
+              <FormDescription>Optional description of the rental rate plan.</FormDescription>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <FormField
-                        control={form.control}
-                        name="rateZone"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Rate Zone</FormLabel>
-                            <Select value={field.value} onValueChange={field.onChange}>
-                              <FormControl>
-                                <SelectTrigger>
-                                  <SelectValue placeholder="Select rate zone" />
-                                </SelectTrigger>
-                              </FormControl>
-                              <SelectContent>
-                                {rateZones.map((zone) => (
-                                  <SelectItem key={zone.id} value={zone.code}>
-                                    {zone.name}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          <FormField
+            control={form.control}
+            name="dailyRate"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Daily Rate</FormLabel>
+                <FormControl>
+                  <Input type="number" min="0" step="0.01" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
 
-                      <FormField
-                        control={form.control}
-                        name="active"
-                        render={({ field }) => (
-                          <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
-                            <div className="space-y-0.5">
-                              <FormLabel className="text-base">Active Status</FormLabel>
-                              <FormDescription>Determine if this rate is active and available for use.</FormDescription>
-                            </div>
-                            <FormControl>
-                              <Switch checked={field.value} onCheckedChange={field.onChange} />
-                            </FormControl>
-                          </FormItem>
-                        )}
-                      />
-                    </div>
+          <FormField
+            control={form.control}
+            name="weeklyRate"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Weekly Rate</FormLabel>
+                <FormControl>
+                  <Input type="number" min="0" step="0.01" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <FormField
-                        control={form.control}
-                        name="pickupStartDate"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Pickup Start Date</FormLabel>
-                            <FormControl>
-                              <Input type="date" {...field} />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
+          <FormField
+            control={form.control}
+            name="monthlyRate"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Monthly Rate</FormLabel>
+                <FormControl>
+                  <Input type="number" min="0" step="0.01" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
 
-                      <FormField
-                        control={form.control}
-                        name="pickupEndDate"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Pickup End Date</FormLabel>
-                            <FormControl>
-                              <Input type="date" {...field} />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                    </div>
+          <FormField
+            control={form.control}
+            name="weekendRate"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Weekend Rate</FormLabel>
+                <FormControl>
+                  <Input type="number" min="0" step="0.01" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <FormField
-                        control={form.control}
-                        name="bookingStartDate"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Booking Start Date</FormLabel>
-                            <FormControl>
-                              <Input type="date" {...field} />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
+        <FormField
+          control={form.control}
+          name="isActive"
+          render={({ field }) => (
+            <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
+              <FormControl>
+                <Checkbox checked={field.value} onCheckedChange={field.onChange} />
+              </FormControl>
+              <div className="space-y-1 leading-none">
+                <FormLabel>Active</FormLabel>
+                <FormDescription>This rate plan is available for booking.</FormDescription>
+              </div>
+            </FormItem>
+          )}
+        />
 
-                      <FormField
-                        control={form.control}
-                        name="bookingEndDate"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Booking End Date</FormLabel>
-                            <FormControl>
-                              <Input type="date" {...field} />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                    </div>
-                  </div>
-
-                  {/* Car Group Rates Section */}
-                  <div className="space-y-4">
-                    <div className="flex justify-between items-center">
-                      <h3 className="text-lg font-medium">Car Group Rates</h3>
-                    </div>
-
-                    <div className="border rounded-md">
-                      <Table>
-                        <TableHeader>
-                          <TableRow>
-                            <TableHead className="w-[50px]">Include</TableHead>
-                            <TableHead>Car Group</TableHead>
-                            <TableHead>Miles/Day</TableHead>
-                            <TableHead>Miles Rate</TableHead>
-                            <TableHead>Rate Type</TableHead>
-                            <TableHead className="text-right">Actions</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {form.watch("carGroupRates").map((carGroup, index) => (
-                            <React.Fragment key={carGroup.groupId}>
-                              <TableRow>
-                                <TableCell>
-                                  <Checkbox
-                                    checked={carGroup.included}
-                                    onCheckedChange={(checked) =>
-                                      toggleGroupInclusion(carGroup.groupId, checked as boolean)
-                                    }
-                                  />
-                                </TableCell>
-                                <TableCell className="font-medium">{carGroup.groupName}</TableCell>
-                                <TableCell>
-                                  <Input
-                                    type="number"
-                                    min={0}
-                                    value={carGroup.milesPerDay}
-                                    onChange={(e) => handleMilesPerDayChange(index, e.target.valueAsNumber || 0)}
-                                    className="w-20"
-                                  />
-                                </TableCell>
-                                <TableCell>
-                                  <Input
-                                    type="number"
-                                    min={0}
-                                    step="0.01"
-                                    value={carGroup.milesRate}
-                                    onChange={(e) => handleMilesRateChange(index, e.target.valueAsNumber || 0)}
-                                    className="w-20"
-                                  />
-                                </TableCell>
-                                <TableCell>
-                                  <Select
-                                    value={carGroup.ratePackage.type}
-                                    onValueChange={(value) =>
-                                      handleRateTypeChange(
-                                        carGroup.groupId,
-                                        value as "daily" | "weekly" | "monthly" | "yearly",
-                                      )
-                                    }
-                                  >
-                                    <SelectTrigger className="w-[120px]">
-                                      <SelectValue />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                      <SelectItem value="daily">Daily</SelectItem>
-                                      <SelectItem value="weekly">Weekly</SelectItem>
-                                      <SelectItem value="monthly">Monthly</SelectItem>
-                                      <SelectItem value="yearly">Yearly</SelectItem>
-                                    </SelectContent>
-                                  </Select>
-                                </TableCell>
-                                <TableCell className="text-right">
-                                  <Button
-                                    type="button"
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={() => toggleGroupExpanded(carGroup.groupId)}
-                                  >
-                                    {expandedGroups[carGroup.groupId] ? (
-                                      <ChevronUp className="h-4 w-4" />
-                                    ) : (
-                                      <ChevronDown className="h-4 w-4" />
-                                    )}
-                                    <span className="sr-only">Toggle details</span>
-                                  </Button>
-                                </TableCell>
-                              </TableRow>
-
-                              {/* Expanded details row */}
-                              {expandedGroups[carGroup.groupId] && (
-                                <TableRow>
-                                  <TableCell colSpan={6} className="p-0">
-                                    <div className="p-4 bg-muted/50">
-                                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                                        <div>
-                                          <h4 className="font-medium mb-2">Insurance Rates</h4>
-                                          <div className="grid grid-cols-2 gap-2">
-                                            <div>
-                                              <label className="text-sm">CDW Deposit</label>
-                                              <Input
-                                                type="number"
-                                                min={0}
-                                                step="0.01"
-                                                value={carGroup.depositRateCDW}
-                                                onChange={(e) =>
-                                                  handleInsuranceRateChange(
-                                                    index,
-                                                    "depositRateCDW",
-                                                    e.target.valueAsNumber || 0,
-                                                  )
-                                                }
-                                              />
-                                            </div>
-                                            <div>
-                                              <label className="text-sm">CDW Policy</label>
-                                              <Input
-                                                type="number"
-                                                min={0}
-                                                step="0.01"
-                                                value={carGroup.policyValueCDW}
-                                                onChange={(e) =>
-                                                  handleInsuranceRateChange(
-                                                    index,
-                                                    "policyValueCDW",
-                                                    e.target.valueAsNumber || 0,
-                                                  )
-                                                }
-                                              />
-                                            </div>
-
-                                            <div>
-                                              <label className="text-sm">PAI Deposit</label>
-                                              <Input
-                                                type="number"
-                                                min={0}
-                                                step="0.01"
-                                                value={carGroup.depositRatePAI}
-                                                onChange={(e) =>
-                                                  handleInsuranceRateChange(
-                                                    index,
-                                                    "depositRatePAI",
-                                                    e.target.valueAsNumber || 0,
-                                                  )
-                                                }
-                                              />
-                                            </div>
-                                            <div>
-                                              <label className="text-sm">PAI Policy</label>
-                                              <Input
-                                                type="number"
-                                                min={0}
-                                                step="0.01"
-                                                value={carGroup.policyValuePAI}
-                                                onChange={(e) =>
-                                                  handleInsuranceRateChange(
-                                                    index,
-                                                    "policyValuePAI",
-                                                    e.target.valueAsNumber || 0,
-                                                  )
-                                                }
-                                              />
-                                            </div>
-
-                                            <div>
-                                              <label className="text-sm">SCDW Deposit</label>
-                                              <Input
-                                                type="number"
-                                                min={0}
-                                                step="0.01"
-                                                value={carGroup.depositRateSCDW}
-                                                onChange={(e) =>
-                                                  handleInsuranceRateChange(
-                                                    index,
-                                                    "depositRateSCDW",
-                                                    e.target.valueAsNumber || 0,
-                                                  )
-                                                }
-                                              />
-                                            </div>
-                                            <div>
-                                              <label className="text-sm">SCDW Policy</label>
-                                              <Input
-                                                type="number"
-                                                min={0}
-                                                step="0.01"
-                                                value={carGroup.policyValueSCDW}
-                                                onChange={(e) =>
-                                                  handleInsuranceRateChange(
-                                                    index,
-                                                    "policyValueSCDW",
-                                                    e.target.valueAsNumber || 0,
-                                                  )
-                                                }
-                                              />
-                                            </div>
-
-                                            <div>
-                                              <label className="text-sm">CPP Deposit</label>
-                                              <Input
-                                                type="number"
-                                                min={0}
-                                                step="0.01"
-                                                value={carGroup.depositRateCPP}
-                                                onChange={(e) =>
-                                                  handleInsuranceRateChange(
-                                                    index,
-                                                    "depositRateCPP",
-                                                    e.target.valueAsNumber || 0,
-                                                  )
-                                                }
-                                              />
-                                            </div>
-                                            <div>
-                                              <label className="text-sm">CPP Policy</label>
-                                              <Input
-                                                type="number"
-                                                min={0}
-                                                step="0.01"
-                                                value={carGroup.policyValueCPP}
-                                                onChange={(e) =>
-                                                  handleInsuranceRateChange(
-                                                    index,
-                                                    "policyValueCPP",
-                                                    e.target.valueAsNumber || 0,
-                                                  )
-                                                }
-                                              />
-                                            </div>
-                                          </div>
-                                        </div>
-
-                                        <div>
-                                          <h4 className="font-medium mb-2">Additional Charges</h4>
-                                          <div>
-                                            <label className="text-sm">Delivery Charges</label>
-                                            <Input
-                                              type="number"
-                                              min={0}
-                                              step="0.01"
-                                              value={carGroup.deliveryCharges}
-                                              onChange={(e) =>
-                                                handleInsuranceRateChange(
-                                                  index,
-                                                  "deliveryCharges",
-                                                  e.target.valueAsNumber || 0,
-                                                )
-                                              }
-                                            />
-                                          </div>
-                                        </div>
-                                      </div>
-
-                                      {/* Rate Package Section */}
-                                      <div>
-                                        <h4 className="font-medium mb-2">Rate Package</h4>
-
-                                        {carGroup.ratePackage.type === "daily" && (
-                                          <div>
-                                            <div className="flex justify-between items-center mb-2">
-                                              <h5 className="text-sm font-medium">Daily Rates</h5>
-                                              <Button
-                                                type="button"
-                                                variant="outline"
-                                                size="sm"
-                                                onClick={() => toggleDayRatesExpanded(carGroup.groupId)}
-                                              >
-                                                {expandedDayRates[carGroup.groupId] ? "Collapse" : "Expand"}
-                                              </Button>
-                                            </div>
-
-                                            {!expandedDayRates[carGroup.groupId] ? (
-                                              <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
-                                                {[0, 1, 2, 3, 4].map((dayIndex) => (
-                                                  <div key={dayIndex}>
-                                                    <label className="text-sm">Day {dayIndex + 1}</label>
-                                                    <Input
-                                                      type="number"
-                                                      min={0}
-                                                      step="0.01"
-                                                      value={carGroup.ratePackage.dailyRates?.[dayIndex] || 0}
-                                                      onChange={(e) =>
-                                                        handleDailyRateChange(
-                                                          index,
-                                                          dayIndex,
-                                                          e.target.valueAsNumber || 0,
-                                                        )
-                                                      }
-                                                    />
-                                                  </div>
-                                                ))}
-                                              </div>
-                                            ) : (
-                                              <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
-                                                {Array.from({ length: 30 }).map((_, dayIndex) => (
-                                                  <div key={dayIndex}>
-                                                    <label className="text-sm">Day {dayIndex + 1}</label>
-                                                    <Input
-                                                      type="number"
-                                                      min={0}
-                                                      step="0.01"
-                                                      value={carGroup.ratePackage.dailyRates?.[dayIndex] || 0}
-                                                      onChange={(e) =>
-                                                        handleDailyRateChange(
-                                                          index,
-                                                          dayIndex,
-                                                          e.target.valueAsNumber || 0,
-                                                        )
-                                                      }
-                                                    />
-                                                  </div>
-                                                ))}
-                                              </div>
-                                            )}
-                                          </div>
-                                        )}
-
-                                        {carGroup.ratePackage.type === "weekly" && (
-                                          <div>
-                                            <label className="text-sm">Weekly Rate</label>
-                                            <Input
-                                              type="number"
-                                              min={0}
-                                              step="0.01"
-                                              value={carGroup.ratePackage.weeklyRate || 0}
-                                              onChange={(e) => {
-                                                const updatedRates = [...form.getValues().carGroupRates]
-                                                updatedRates[index].ratePackage.weeklyRate = e.target.valueAsNumber || 0
-                                                form.setValue("carGroupRates", updatedRates)
-                                              }}
-                                              className="mt-1"
-                                            />
-                                          </div>
-                                        )}
-
-                                        {carGroup.ratePackage.type === "monthly" && (
-                                          <div>
-                                            <label className="text-sm">Monthly Rate</label>
-                                            <Input
-                                              type="number"
-                                              min={0}
-                                              step="0.01"
-                                              value={carGroup.ratePackage.monthlyRate || 0}
-                                              onChange={(e) => {
-                                                const updatedRates = [...form.getValues().carGroupRates]
-                                                updatedRates[index].ratePackage.monthlyRate =
-                                                  e.target.valueAsNumber || 0
-                                                form.setValue("carGroupRates", updatedRates)
-                                              }}
-                                              className="mt-1"
-                                            />
-                                          </div>
-                                        )}
-
-                                        {carGroup.ratePackage.type === "yearly" && (
-                                          <div>
-                                            <label className="text-sm">Yearly Rate</label>
-                                            <Input
-                                              type="number"
-                                              min={0}
-                                              step="0.01"
-                                              value={carGroup.ratePackage.yearlyRate || 0}
-                                              onChange={(e) => {
-                                                const updatedRates = [...form.getValues().carGroupRates]
-                                                updatedRates[index].ratePackage.yearlyRate = e.target.valueAsNumber || 0
-                                                form.setValue("carGroupRates", updatedRates)
-                                              }}
-                                              className="mt-1"
-                                            />
-                                          </div>
-                                        )}
-                                      </div>
-                                    </div>
-                                  </TableCell>
-                                </TableRow>
-                              )}
-                            </React.Fragment>
-                          ))}
-                        </TableBody>
-                      </Table>
-                    </div>
-                  </div>
-                </TabsContent>
-
-                {/* Additional Options Tab */}
-                <TabsContent value="additional-options" className="space-y-4">
-                  <div className="flex justify-between items-center">
-                    <h3 className="text-lg font-medium">Additional Options</h3>
-                    <p className="text-sm text-muted-foreground">These options apply to all car groups in this rate</p>
-                  </div>
-
-                  <div className="border rounded-md">
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead className="w-[80px]">Include</TableHead>
-                          <TableHead className="w-[120px]">Customer Pays</TableHead>
-                          <TableHead className="w-[100px]">Code</TableHead>
-                          <TableHead>Description</TableHead>
-                          <TableHead>Option Type</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {form.watch("additionalOptions").map((option, index) => (
-                          <TableRow key={option.id}>
-                            <TableCell>
-                              <Checkbox
-                                checked={option.included}
-                                onCheckedChange={(checked) => handleOptionChange(index, "included", !!checked)}
-                              />
-                            </TableCell>
-                            <TableCell>
-                              <Checkbox
-                                checked={option.customerPays}
-                                onCheckedChange={(checked) => handleOptionChange(index, "customerPays", !!checked)}
-                              />
-                            </TableCell>
-                            <TableCell>{option.code}</TableCell>
-                            <TableCell>{option.description}</TableCell>
-                            <TableCell>{additionalOptions[index]?.optionType || "N/A"}</TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </div>
-                </TabsContent>
-              </Tabs>
-            </CardContent>
-            <CardFooter className="flex justify-between">
-              <Button variant="outline" asChild>
-                <Link href="/admin/rate-and-policies/rental-rates">Cancel</Link>
-              </Button>
-              <Button type="submit" disabled={isSubmitting}>
-                {isSubmitting ? "Saving..." : isEditing ? "Update Rate" : "Save Rate"}
-              </Button>
-            </CardFooter>
-          </Card>
+        <div className="flex justify-end space-x-4">
+          <Button type="button" variant="outline" onClick={() => router.push("/admin/rate-and-policies/rental-rates")}>
+            Cancel
+          </Button>
+          <Button type="submit" disabled={isSubmitting}>
+            {isSubmitting ? "Saving..." : initialData ? "Update Rate" : "Create Rate"}
+          </Button>
         </div>
       </form>
     </Form>
