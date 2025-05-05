@@ -1,26 +1,30 @@
-import { neon } from "@neondatabase/serverless"
+import { neon, type NeonQueryFunction } from "@neondatabase/serverless"
 
 // Create a SQL client with the Neon serverless driver
-// This is the recommended way to connect to Neon from serverless environments
-export const sql = neon(process.env.DATABASE_URL!)
+export const sql: NeonQueryFunction<any> = neon(process.env.DATABASE_URL!)
 
 // For backward compatibility with existing code that imports 'db'
-// We'll provide the same SQL client as 'db'
 export const db = {
   query: async (text: string, params: any[] = []) => {
     try {
-      // Convert the query and params to a tagged template literal
-      // that works with the neon client
-      const queryText = text.replace(/\$\d+/g, "?")
-      const result = await sql([queryText, ...params])
-      return { rows: result }
+      if (params && params.length > 0) {
+        // Replace $1, $2, etc. with the actual parameters
+        let queryText = text
+        params.forEach((param, index) => {
+          queryText = queryText.replace(`$${index + 1}`, typeof param === "string" ? `'${param}'` : String(param))
+        })
+        const result = await sql.unsafe(queryText)
+        return { rows: result }
+      } else {
+        const result = await sql.unsafe(text)
+        return { rows: result }
+      }
     } catch (error) {
       console.error("Database query error:", error)
       throw error
     }
   },
   // Add any other methods that might be used in the application
-  // For example, if transaction is used somewhere
   transaction: async (callback: Function) => {
     try {
       // Start a transaction
