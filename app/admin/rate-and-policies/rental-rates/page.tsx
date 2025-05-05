@@ -11,8 +11,10 @@ export default async function RentalRatesPage({
 }: {
   searchParams: { tab?: string }
 }) {
-  const tab = searchParams.tab || "all"
-  const { rates, error } = await getRentalRates(tab)
+  // Fix: Use a default value directly instead of accessing searchParams.tab
+  const tabValue = typeof searchParams === "object" && searchParams ? searchParams.tab || "all" : "all"
+
+  const { rates, error } = await getRentalRates(tabValue)
 
   return (
     <div className="space-y-6">
@@ -31,7 +33,7 @@ export default async function RentalRatesPage({
         </div>
       </div>
 
-      <Tabs defaultValue={tab} className="space-y-4">
+      <Tabs defaultValue={tabValue} className="space-y-4">
         <TabsList>
           <TabsTrigger value="all" asChild>
             <Link href="/admin/rate-and-policies/rental-rates?tab=all">All Rates</Link>
@@ -43,14 +45,15 @@ export default async function RentalRatesPage({
             <Link href="/admin/rate-and-policies/rental-rates?tab=inactive">Inactive</Link>
           </TabsTrigger>
         </TabsList>
-        <TabsContent value={tab} className="space-y-4">
+        <TabsContent value={tabValue} className="space-y-4">
           <Card>
             <CardHeader>
               <CardTitle>
-                {tab === "active" ? "Active" : tab === "inactive" ? "Inactive" : "All"} Rental Rates
+                {tabValue === "active" ? "Active" : tabValue === "inactive" ? "Inactive" : "All"} Rental Rates
               </CardTitle>
               <CardDescription>
-                View and manage {tab === "active" ? "active" : tab === "inactive" ? "inactive" : "all"} rental rates
+                View and manage {tabValue === "active" ? "active" : tabValue === "inactive" ? "inactive" : "all"} rental
+                rates
               </CardDescription>
             </CardHeader>
             <CardContent>
