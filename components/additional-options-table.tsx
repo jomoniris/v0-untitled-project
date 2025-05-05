@@ -25,64 +25,21 @@ import {
 } from "@/components/ui/alert-dialog"
 import { toast } from "@/components/ui/use-toast"
 import { useRouter } from "next/navigation"
+import {
+  type AdditionalOption,
+  deleteAdditionalOption,
+  toggleAdditionalOptionStatus,
+} from "@/app/actions/additional-option-actions"
 
-export function AdditionalOptionsTable() {
+interface AdditionalOptionsTableProps {
+  options: AdditionalOption[]
+}
+
+export function AdditionalOptionsTable({ options: initialOptions }: AdditionalOptionsTableProps) {
   const router = useRouter()
-  const [options, setOptions] = useState([
-    {
-      id: "1",
-      code: "GPS",
-      description: "GPS Navigation System",
-      optionType: "Equipment",
-      calculationType: "Daily",
-      excessWeight: 2,
-      active: true,
-      mandatorySurcharge: false,
-    },
-    {
-      id: "2",
-      code: "WIFI",
-      description: "Mobile WiFi Hotspot",
-      optionType: "Equipment",
-      calculationType: "Daily",
-      excessWeight: 1,
-      active: true,
-      mandatorySurcharge: false,
-    },
-    {
-      id: "3",
-      code: "CSEAT",
-      description: "Child Safety Seat",
-      optionType: "Equipment",
-      calculationType: "Rental",
-      excessWeight: 5,
-      active: true,
-      mandatorySurcharge: false,
-    },
-    {
-      id: "4",
-      code: "INSUR",
-      description: "Additional Insurance",
-      optionType: "Insurance",
-      calculationType: "Daily",
-      excessWeight: 0,
-      active: true,
-      mandatorySurcharge: true,
-    },
-    {
-      id: "5",
-      code: "ROADSIDE",
-      description: "Roadside Assistance",
-      optionType: "Service",
-      calculationType: "Rental",
-      excessWeight: 0,
-      active: false,
-      mandatorySurcharge: false,
-    },
-  ])
-
+  const [options, setOptions] = useState<AdditionalOption[]>(initialOptions)
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
-  const [optionToDelete, setOptionToDelete] = useState<any>(null)
+  const [optionToDelete, setOptionToDelete] = useState<AdditionalOption | null>(null)
   const [isDeleting, setIsDeleting] = useState(false)
 
   const handleDelete = async () => {
@@ -91,8 +48,11 @@ export function AdditionalOptionsTable() {
     setIsDeleting(true)
 
     try {
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 1000))
+      const result = await deleteAdditionalOption(optionToDelete.id)
+
+      if (result.error) {
+        throw new Error(result.error)
+      }
 
       // Remove the option from the state
       setOptions(options.filter((option) => option.id !== optionToDelete.id))
@@ -116,15 +76,18 @@ export function AdditionalOptionsTable() {
     }
   }
 
-  const openDeleteDialog = (option: any) => {
+  const openDeleteDialog = (option: AdditionalOption) => {
     setOptionToDelete(option)
     setDeleteDialogOpen(true)
   }
 
-  const toggleOptionStatus = async (optionId: string, currentStatus: boolean) => {
+  const handleToggleStatus = async (optionId: string, currentStatus: boolean) => {
     try {
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 500))
+      const result = await toggleAdditionalOptionStatus(optionId, currentStatus)
+
+      if (result.error) {
+        throw new Error(result.error)
+      }
 
       // Update the option status in the state
       setOptions(options.map((option) => (option.id === optionId ? { ...option, active: !currentStatus } : option)))
@@ -159,65 +122,73 @@ export function AdditionalOptionsTable() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {options.map((option) => (
-              <TableRow key={option.id}>
-                <TableCell className="font-medium">{option.code}</TableCell>
-                <TableCell>{option.description}</TableCell>
-                <TableCell>{option.optionType}</TableCell>
-                <TableCell>{option.calculationType}</TableCell>
-                <TableCell>
-                  <span
-                    className={`px-2 py-1 rounded-full text-xs ${
-                      option.mandatorySurcharge ? "bg-blue-100 text-blue-800" : "bg-gray-100 text-gray-800"
-                    }`}
-                  >
-                    {option.mandatorySurcharge ? "Yes" : "No"}
-                  </span>
-                </TableCell>
-                <TableCell>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className={`px-2 py-1 rounded-full text-xs ${
-                      option.active ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"
-                    }`}
-                    onClick={() => toggleOptionStatus(option.id, option.active)}
-                  >
-                    {option.active ? "Active" : "Inactive"}
-                  </Button>
-                </TableCell>
-                <TableCell className="text-right">
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="icon">
-                        <MoreHorizontal className="h-4 w-4" />
-                        <span className="sr-only">Open menu</span>
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem asChild>
-                        <Link href={`/admin/company/finance/additional-options/${option.id}/view`}>
-                          <Eye className="mr-2 h-4 w-4" />
-                          View Details
-                        </Link>
-                      </DropdownMenuItem>
-                      <DropdownMenuItem asChild>
-                        <Link href={`/admin/company/finance/additional-options/${option.id}/edit`}>
-                          <Edit className="mr-2 h-4 w-4" />
-                          Edit
-                        </Link>
-                      </DropdownMenuItem>
-                      <DropdownMenuItem className="text-destructive" onClick={() => openDeleteDialog(option)}>
-                        <Trash2 className="mr-2 h-4 w-4" />
-                        Delete
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
+            {options.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={7} className="text-center py-4">
+                  No additional options found
                 </TableCell>
               </TableRow>
-            ))}
+            ) : (
+              options.map((option) => (
+                <TableRow key={option.id}>
+                  <TableCell className="font-medium">{option.code}</TableCell>
+                  <TableCell>{option.description}</TableCell>
+                  <TableCell className="capitalize">{option.optionType}</TableCell>
+                  <TableCell className="capitalize">{option.calculationType}</TableCell>
+                  <TableCell>
+                    <span
+                      className={`px-2 py-1 rounded-full text-xs ${
+                        option.mandatorySurcharge ? "bg-blue-100 text-blue-800" : "bg-gray-100 text-gray-800"
+                      }`}
+                    >
+                      {option.mandatorySurcharge ? "Yes" : "No"}
+                    </span>
+                  </TableCell>
+                  <TableCell>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className={`px-2 py-1 rounded-full text-xs ${
+                        option.active ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"
+                      }`}
+                      onClick={() => handleToggleStatus(option.id, option.active)}
+                    >
+                      {option.active ? "Active" : "Inactive"}
+                    </Button>
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon">
+                          <MoreHorizontal className="h-4 w-4" />
+                          <span className="sr-only">Open menu</span>
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem asChild>
+                          <Link href={`/admin/company/finance/additional-options/${option.id}/view`}>
+                            <Eye className="mr-2 h-4 w-4" />
+                            View Details
+                          </Link>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem asChild>
+                          <Link href={`/admin/company/finance/additional-options/${option.id}/edit`}>
+                            <Edit className="mr-2 h-4 w-4" />
+                            Edit
+                          </Link>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem className="text-destructive" onClick={() => openDeleteDialog(option)}>
+                          <Trash2 className="mr-2 h-4 w-4" />
+                          Delete
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </TableCell>
+                </TableRow>
+              ))
+            )}
           </TableBody>
         </Table>
       </div>

@@ -4,8 +4,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Plus } from "lucide-react"
 import { AdditionalOptionsTable } from "@/components/additional-options-table"
+import { getAdditionalOptions } from "@/app/actions/additional-option-actions"
 
-export default function AdditionalOptionsPage() {
+export default async function AdditionalOptionsPage() {
+  const { options, error } = await getAdditionalOptions()
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -36,7 +39,41 @@ export default function AdditionalOptionsPage() {
               <CardDescription>View and manage all additional options for rentals</CardDescription>
             </CardHeader>
             <CardContent>
-              <AdditionalOptionsTable />
+              {error ? (
+                <div className="text-red-500 p-4 text-center">Error loading additional options: {error}</div>
+              ) : (
+                <AdditionalOptionsTable options={options} />
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+        <TabsContent value="active" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Active Options</CardTitle>
+              <CardDescription>View and manage active additional options</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {error ? (
+                <div className="text-red-500 p-4 text-center">Error loading additional options: {error}</div>
+              ) : (
+                <AdditionalOptionsTable options={options.filter((option) => option.active)} />
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+        <TabsContent value="inactive" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Inactive Options</CardTitle>
+              <CardDescription>View and manage inactive additional options</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {error ? (
+                <div className="text-red-500 p-4 text-center">Error loading additional options: {error}</div>
+              ) : (
+                <AdditionalOptionsTable options={options.filter((option) => !option.active)} />
+              )}
             </CardContent>
           </Card>
         </TabsContent>
