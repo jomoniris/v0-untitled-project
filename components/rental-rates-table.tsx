@@ -34,7 +34,7 @@ interface RentalRatesTableProps {
   rates: any[]
 }
 
-export function RentalRatesTable({ rates }: RentalRatesTableProps) {
+export function RentalRatesTable({ rates = [] }: RentalRatesTableProps) {
   const router = useRouter()
   const [expandedRates, setExpandedRates] = useState<Record<string, boolean>>({})
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)

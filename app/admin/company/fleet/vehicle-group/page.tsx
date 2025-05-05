@@ -1,35 +1,10 @@
 "use client"
 
 import { Button } from "@/components/ui/button"
-import { VehicleGroupTable } from "@/components/vehicle-group-table"
-import { PlusCircle, Loader2 } from "lucide-react"
+import { PlusCircle } from "lucide-react"
 import Link from "next/link"
-import { useEffect, useState } from "react"
-import { getVehicleGroupsData } from "@/app/actions/vehicle-group-data"
-import type { VehicleGroup } from "@/app/actions/vehicle-group-actions"
 
 export default function VehicleGroupPage() {
-  const [loading, setLoading] = useState(true)
-  const [groups, setGroups] = useState<VehicleGroup[]>([])
-  const [error, setError] = useState<string | null>(null)
-
-  useEffect(() => {
-    async function loadData() {
-      try {
-        const { groups, error } = await getVehicleGroupsData()
-        setGroups(groups)
-        setError(error)
-      } catch (err) {
-        console.error("Failed to load vehicle groups:", err)
-        setError("An unexpected error occurred. Please try again.")
-      } finally {
-        setLoading(false)
-      }
-    }
-
-    loadData()
-  }, [])
-
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -45,15 +20,11 @@ export default function VehicleGroupPage() {
         </Button>
       </div>
 
-      {error && <div className="bg-destructive/15 text-destructive p-3 rounded-md">{error}</div>}
-
-      {loading ? (
-        <div className="flex justify-center items-center h-64">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        </div>
-      ) : (
-        <VehicleGroupTable initialGroups={groups} />
-      )}
+      <div className="p-8 text-center border rounded-md">
+        <p className="text-muted-foreground">
+          Vehicle groups will appear here once the database is properly configured.
+        </p>
+      </div>
     </div>
   )
 }
