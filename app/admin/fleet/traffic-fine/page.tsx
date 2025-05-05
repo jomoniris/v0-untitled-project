@@ -1,20 +1,17 @@
-import type { Metadata } from "next"
+"use client"
 
-export const metadata: Metadata = {
-  title: "Traffic Fine Management",
-  description: "Manage traffic violations and fines",
-}
-
-export default function TrafficFinePage() {
+export default function FleetTrafficFinePage() {
   return (
-    <div className="container mx-auto py-6">
-      <h1 className="text-3xl font-bold mb-6">Traffic Fine Management</h1>
-      <p className="text-muted-foreground mb-4">
-        Track and manage traffic violations, fines, and related correspondence for your fleet vehicles.
-      </p>
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-3xl font-bold tracking-tight">Traffic Fines</h1>
+        <p className="text-muted-foreground">Manage traffic fines and violations for your fleet</p>
+      </div>
 
-      <div className="border rounded-lg p-6 bg-card">
-        <p className="text-center text-muted-foreground">Traffic Fine Management module is under development.</p>
+      <div className="rounded-md border p-4">
+        <p className="text-center text-muted-foreground">
+          Traffic fine data is temporarily unavailable. Please check back later.
+        </p>
       </div>
     </div>
   )

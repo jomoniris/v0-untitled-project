@@ -1,8 +1,7 @@
-import { Button } from "@/components/ui/button"
-import { Plus } from "lucide-react"
-import { VehiclesTable } from "@/components/vehicles-table"
-import { FleetMenu } from "@/components/fleet-menu"
+"use client"
+
 import Link from "next/link"
+import { Button } from "@/components/ui/button"
 
 export default function FleetPage() {
   return (
@@ -13,14 +12,39 @@ export default function FleetPage() {
           <p className="text-muted-foreground">Manage your vehicle fleet and maintenance</p>
         </div>
         <Button asChild>
-          <Link href="/admin/vehicles/new">
-            <Plus className="mr-2 h-4 w-4" />
-            Add Vehicle
-          </Link>
+          <Link href="/admin/vehicles/new">Add Vehicle</Link>
         </Button>
       </div>
 
-      <FleetMenu />
+      <div className="bg-white rounded-lg shadow-sm border p-4 mb-6">
+        <h3 className="text-sm font-medium mb-3">Fleet Management</h3>
+        <div className="flex flex-wrap gap-2">
+          <Link
+            href="/admin/vehicles"
+            className="flex items-center gap-2 rounded-md border px-3 py-2 text-sm font-medium transition-colors hover:bg-muted"
+          >
+            <span>Vehicles</span>
+          </Link>
+          <Link
+            href="/admin/company/fleet/vehicle-group"
+            className="flex items-center gap-2 rounded-md border px-3 py-2 text-sm font-medium transition-colors hover:bg-muted"
+          >
+            <span>Vehicle Groups</span>
+          </Link>
+          <Link
+            href="/admin/fleet/utilization"
+            className="flex items-center gap-2 rounded-md border px-3 py-2 text-sm font-medium transition-colors hover:bg-muted"
+          >
+            <span>Utilization</span>
+          </Link>
+          <Link
+            href="/admin/fleet/settings"
+            className="flex items-center gap-2 rounded-md border px-3 py-2 text-sm font-medium transition-colors hover:bg-muted"
+          >
+            <span>Settings</span>
+          </Link>
+        </div>
+      </div>
 
       {/* Fleet Overview Content */}
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
@@ -45,7 +69,11 @@ export default function FleetPage() {
       </div>
 
       <h2 className="text-2xl font-bold tracking-tight mt-8">Vehicle List</h2>
-      <VehiclesTable />
+      <div className="rounded-md border p-4">
+        <p className="text-center text-muted-foreground">
+          Vehicle list is temporarily unavailable. Please check back later.
+        </p>
+      </div>
     </div>
   )
 }

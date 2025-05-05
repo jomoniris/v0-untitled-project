@@ -1,20 +1,17 @@
-import type { Metadata } from "next"
+"use client"
 
-export const metadata: Metadata = {
-  title: "Parking Management",
-  description: "Manage parking locations and expenses",
-}
-
-export default function ParkingManagementPage() {
+export default function FleetParkingPage() {
   return (
-    <div className="container mx-auto py-6">
-      <h1 className="text-3xl font-bold mb-6">Parking Management</h1>
-      <p className="text-muted-foreground mb-4">
-        Manage parking locations, permits, and parking-related expenses for your fleet vehicles.
-      </p>
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-3xl font-bold tracking-tight">Fleet Parking</h1>
+        <p className="text-muted-foreground">Manage parking locations and assignments for your fleet</p>
+      </div>
 
-      <div className="border rounded-lg p-6 bg-card">
-        <p className="text-center text-muted-foreground">Parking Management module is under development.</p>
+      <div className="rounded-md border p-4">
+        <p className="text-center text-muted-foreground">
+          Parking data is temporarily unavailable. Please check back later.
+        </p>
       </div>
     </div>
   )
