@@ -38,6 +38,14 @@ const vehicleGroupFormSchema = z
       .refine((value) => /^[A-Z0-9]+$/.test(value), {
         message: "Code must contain only uppercase letters and numbers.",
       }),
+    name: z
+      .string()
+      .min(2, {
+        message: "Name must be at least 2 characters.",
+      })
+      .max(100, {
+        message: "Name must not be longer than 100 characters.",
+      }),
     description: z
       .string()
       .min(3, {
@@ -86,6 +94,9 @@ const vehicleGroupFormSchema = z
 
     // Website Photo
     imagePath: z.string().optional(),
+
+    // Status
+    active: z.boolean().default(true),
   })
   .refine((data) => data.youngDriverLimit >= data.minAge, {
     message: "Young driver limit must be greater than or equal to minimum age",
@@ -114,6 +125,7 @@ export function VehicleGroupForm({ initialData, isEditing = false }: VehicleGrou
   // Default form values
   const defaultValues: Partial<VehicleGroupFormValues> = {
     code: "",
+    name: "",
     description: "",
     sipCode: "",
     class: "",
@@ -132,6 +144,7 @@ export function VehicleGroupForm({ initialData, isEditing = false }: VehicleGrou
     upgradeMode: "none",
     alternateGroups: "none",
     imagePath: "",
+    active: true,
     ...initialData,
   }
 
@@ -256,19 +269,34 @@ export function VehicleGroupForm({ initialData, isEditing = false }: VehicleGrou
 
                     <FormField
                       control={form.control}
-                      name="description"
+                      name="name"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Description</FormLabel>
+                          <FormLabel>Name</FormLabel>
                           <FormControl>
-                            <Input placeholder="Enter group description" {...field} />
+                            <Input placeholder="Enter group name" {...field} />
                           </FormControl>
-                          <FormDescription>A brief description of this vehicle group.</FormDescription>
+                          <FormDescription>The display name for this vehicle group.</FormDescription>
                           <FormMessage />
                         </FormItem>
                       )}
                     />
                   </div>
+
+                  <FormField
+                    control={form.control}
+                    name="description"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Description</FormLabel>
+                        <FormControl>
+                          <Input placeholder="Enter group description" {...field} />
+                        </FormControl>
+                        <FormDescription>A brief description of this vehicle group.</FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <FormField
@@ -367,23 +395,43 @@ export function VehicleGroupForm({ initialData, isEditing = false }: VehicleGrou
                     />
                   </div>
 
-                  <FormField
-                    control={form.control}
-                    name="autoAllocate"
-                    render={({ field }) => (
-                      <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
-                        <div className="space-y-0.5">
-                          <FormLabel className="text-base">Auto Allocate</FormLabel>
-                          <FormDescription>
-                            Allow system to automatically allocate vehicles from this group.
-                          </FormDescription>
-                        </div>
-                        <FormControl>
-                          <Switch checked={field.value} onCheckedChange={field.onChange} />
-                        </FormControl>
-                      </FormItem>
-                    )}
-                  />
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <FormField
+                      control={form.control}
+                      name="autoAllocate"
+                      render={({ field }) => (
+                        <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                          <div className="space-y-0.5">
+                            <FormLabel className="text-base">Auto Allocate</FormLabel>
+                            <FormDescription>
+                              Allow system to automatically allocate vehicles from this group.
+                            </FormDescription>
+                          </div>
+                          <FormControl>
+                            <Switch checked={field.value} onCheckedChange={field.onChange} />
+                          </FormControl>
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name="active"
+                      render={({ field }) => (
+                        <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                          <div className="space-y-0.5">
+                            <FormLabel className="text-base">Active</FormLabel>
+                            <FormDescription>
+                              Whether this vehicle group is active and available for rentals.
+                            </FormDescription>
+                          </div>
+                          <FormControl>
+                            <Switch checked={field.value} onCheckedChange={field.onChange} />
+                          </FormControl>
+                        </FormItem>
+                      )}
+                    />
+                  </div>
 
                   <FormField
                     control={form.control}

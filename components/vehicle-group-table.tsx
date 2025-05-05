@@ -134,13 +134,13 @@ export function VehicleGroupTable({ initialGroups }: VehicleGroupTableProps) {
                       <div className="relative h-10 w-14 overflow-hidden rounded">
                         <Image
                           src={group.imagePath || "/placeholder.svg"}
-                          alt={group.description}
+                          alt={group.name}
                           fill
                           className="object-cover"
                         />
                       </div>
                       <div>
-                        <div className="font-medium">{group.description}</div>
+                        <div className="font-medium">{group.name}</div>
                         <div className="text-xs text-muted-foreground">{group.code}</div>
                       </div>
                     </div>

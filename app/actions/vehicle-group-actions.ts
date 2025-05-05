@@ -7,6 +7,7 @@ import { z } from "zod"
 // Define the vehicle group schema for validation
 const vehicleGroupSchema = z.object({
   code: z.string().min(2).max(10),
+  name: z.string().min(2).max(100), // Added name field
   description: z.string().min(3).max(100),
   sipCode: z.string().min(2).max(10).optional(),
   class: z.string().min(1),
@@ -24,7 +25,8 @@ const vehicleGroupSchema = z.object({
   seniorLimit: z.number().int().positive().optional(),
   upgradeMode: z.string().optional(),
   alternateGroups: z.string().optional(),
-  imagePath: z.string().optional().nullable(), // Updated to allow null values
+  imagePath: z.string().optional().nullable(),
+  active: z.boolean().default(true),
 })
 
 export type VehicleGroupFormValues = z.infer<typeof vehicleGroupSchema>
@@ -36,7 +38,8 @@ export async function getVehicleGroups() {
     const groups = await sql<VehicleGroup[]>`
       SELECT 
         id, 
-        code, 
+        code,
+        name,
         description, 
         sip_code as "sipCode", 
         class, 
@@ -54,7 +57,8 @@ export async function getVehicleGroups() {
         senior_limit as "seniorLimit",
         upgrade_mode as "upgradeMode",
         alternate_groups as "alternateGroups",
-        image_path as "imagePath"
+        image_path as "imagePath",
+        active
       FROM vehicle_groups
       ORDER BY code
     `
@@ -71,7 +75,8 @@ export async function getVehicleGroupById(id: string) {
     const [group] = await sql<VehicleGroup[]>`
       SELECT 
         id, 
-        code, 
+        code,
+        name,
         description, 
         sip_code as "sipCode", 
         class, 
@@ -89,7 +94,8 @@ export async function getVehicleGroupById(id: string) {
         senior_limit as "seniorLimit",
         upgrade_mode as "upgradeMode",
         alternate_groups as "alternateGroups",
-        image_path as "imagePath"
+        image_path as "imagePath",
+        active
       FROM vehicle_groups
       WHERE id = ${id}
     `
@@ -109,7 +115,8 @@ export async function createVehicleGroup(data: VehicleGroupFormValues) {
     // Insert the vehicle group into the database
     const [group] = await sql<{ id: string }[]>`
       INSERT INTO vehicle_groups (
-        code, 
+        code,
+        name,
         description, 
         sip_code, 
         class, 
@@ -127,10 +134,12 @@ export async function createVehicleGroup(data: VehicleGroupFormValues) {
         senior_limit,
         upgrade_mode,
         alternate_groups,
-        image_path
+        image_path,
+        active
       )
       VALUES (
         ${validatedData.code},
+        ${validatedData.name},
         ${validatedData.description},
         ${validatedData.sipCode || null},
         ${validatedData.class},
@@ -148,7 +157,8 @@ export async function createVehicleGroup(data: VehicleGroupFormValues) {
         ${validatedData.seniorLimit || null},
         ${validatedData.upgradeMode || null},
         ${validatedData.alternateGroups || null},
-        ${validatedData.imagePath || null}
+        ${validatedData.imagePath || null},
+        ${validatedData.active}
       )
       RETURNING id
     `
@@ -175,6 +185,7 @@ export async function updateVehicleGroup(id: string, data: VehicleGroupFormValue
       UPDATE vehicle_groups
       SET 
         code = ${validatedData.code},
+        name = ${validatedData.name},
         description = ${validatedData.description},
         sip_code = ${validatedData.sipCode || null},
         class = ${validatedData.class},
@@ -193,6 +204,7 @@ export async function updateVehicleGroup(id: string, data: VehicleGroupFormValue
         upgrade_mode = ${validatedData.upgradeMode || null},
         alternate_groups = ${validatedData.alternateGroups || null},
         image_path = ${validatedData.imagePath || null},
+        active = ${validatedData.active},
         updated_at = CURRENT_TIMESTAMP
       WHERE id = ${id}
       RETURNING id

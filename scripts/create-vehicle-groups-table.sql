@@ -2,6 +2,7 @@
 CREATE TABLE IF NOT EXISTS vehicle_groups (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   code VARCHAR(10) NOT NULL UNIQUE,
+  name VARCHAR(100) NOT NULL,
   description VARCHAR(100) NOT NULL,
   sip_code VARCHAR(10),
   class VARCHAR(50) NOT NULL,
@@ -20,13 +21,15 @@ CREATE TABLE IF NOT EXISTS vehicle_groups (
   upgrade_mode VARCHAR(50),
   alternate_groups VARCHAR(50),
   image_path TEXT,
+  active BOOLEAN NOT NULL DEFAULT TRUE,
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
 -- Insert sample data
 INSERT INTO vehicle_groups (
-  code, 
+  code,
+  name,
   description, 
   sip_code, 
   class, 
@@ -44,6 +47,7 @@ INSERT INTO vehicle_groups (
 (
   'ECON',
   'Economy',
+  'Economy class vehicle',
   'ECAR',
   'economy',
   TRUE,
@@ -60,6 +64,7 @@ INSERT INTO vehicle_groups (
 (
   'COMP',
   'Compact',
+  'Compact class vehicle',
   'CCAR',
   'compact',
   TRUE,
@@ -76,6 +81,7 @@ INSERT INTO vehicle_groups (
 (
   'PREM',
   'Premium',
+  'Premium class vehicle',
   'PCAR',
   'premium',
   TRUE,
@@ -92,6 +98,7 @@ INSERT INTO vehicle_groups (
 (
   'SUV',
   'SUV',
+  'Sport Utility Vehicle',
   'SFAR',
   'suv',
   TRUE,
