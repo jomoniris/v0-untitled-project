@@ -60,9 +60,9 @@
     "zod": "latest",
     "@tanstack/react-table": "latest",
     "react-error-boundary": "latest",
-    "@neondatabase/serverless": "latest",
     "fs": "latest",
     "path": "latest",
+    "@neondatabase/serverless": "latest",
     "url": "latest"
   },
   "devDependencies": {
