@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { RentalRatesTable } from "@/components/rental-rates-table"
 import Link from "next/link"
-import { AlertCircle, RefreshCw, Database } from "lucide-react"
+import { AlertCircle, RefreshCw, Database, Key } from "lucide-react"
 
 export default function RentalRatesPage() {
   const [rates, setRates] = useState<any[]>([])
@@ -13,6 +13,7 @@ export default function RentalRatesPage() {
   const [error, setError] = useState<string | null>(null)
   const [errorDetails, setErrorDetails] = useState<any>(null)
   const [connectionInfo, setConnectionInfo] = useState<any>(null)
+  const [isAuthError, setIsAuthError] = useState(false)
 
   const fetchRates = async () => {
     console.log("Fetching rental rates...")
@@ -20,6 +21,7 @@ export default function RentalRatesPage() {
     setError(null)
     setErrorDetails(null)
     setConnectionInfo(null)
+    setIsAuthError(false)
 
     try {
       console.log("Sending request to /api/rental-rates")
@@ -38,6 +40,13 @@ export default function RentalRatesPage() {
       } catch (e) {
         console.error("Failed to parse response as JSON:", e)
         throw new Error(`Invalid JSON response: ${text.substring(0, 100)}...`)
+      }
+
+      // Check for authentication errors
+      if (response.status === 401 || data.errorType === "AuthenticationError") {
+        setIsAuthError(true)
+        setErrorDetails(data)
+        throw new Error(data.error || "Authentication failed")
       }
 
       if (!response.ok) {
@@ -97,17 +106,33 @@ export default function RentalRatesPage() {
         </CardHeader>
         <CardContent>
           {error ? (
-            <div className="bg-red-50 border border-red-200 text-red-700 p-4 rounded-md mb-4">
+            <div
+              className={`border p-4 rounded-md mb-4 ${isAuthError ? "bg-yellow-50 border-yellow-200 text-yellow-800" : "bg-red-50 border-red-200 text-red-700"}`}
+            >
               <div className="flex items-center mb-2">
-                <AlertCircle className="h-5 w-5 mr-2" />
-                <p className="font-semibold">Error</p>
+                {isAuthError ? <Key className="h-5 w-5 mr-2" /> : <AlertCircle className="h-5 w-5 mr-2" />}
+                <p className="font-semibold">{isAuthError ? "Authentication Error" : "Error"}</p>
               </div>
               <p className="text-sm mb-2">{error}</p>
-              {errorDetails && (
+
+              {isAuthError && (
+                <div className="bg-yellow-100 p-3 rounded mb-3 text-sm">
+                  <p className="font-medium mb-1">Troubleshooting Steps:</p>
+                  <ol className="list-decimal list-inside space-y-1">
+                    <li>Check that your DATABASE_URL environment variable is correct</li>
+                    <li>Verify that the username and password in the connection string are valid</li>
+                    <li>Ensure that the database user has the necessary permissions</li>
+                    <li>Try regenerating the database connection string in your Neon dashboard</li>
+                  </ol>
+                </div>
+              )}
+
+              {errorDetails && !isAuthError && (
                 <div className="text-xs bg-red-100 p-2 rounded mb-2 overflow-auto max-h-32">
                   <pre>{JSON.stringify(errorDetails, null, 2)}</pre>
                 </div>
               )}
+
               <div className="flex space-x-2">
                 <Button variant="outline" size="sm" onClick={fetchRates} className="flex items-center">
                   <RefreshCw className="h-4 w-4 mr-2" />

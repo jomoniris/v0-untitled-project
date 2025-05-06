@@ -1,53 +1,58 @@
-import { testConnection, executeQuery } from "@/lib/db"
+import { testConnection } from "@/lib/db"
 import { NextResponse } from "next/server"
 
 export async function GET() {
   console.log("GET /api/test-db - Testing database connection")
 
   try {
-    // Test basic connection
-    const connectionResult = await testConnection()
-    console.log("Connection test result:", connectionResult)
+    const result = await testConnection()
 
-    // If connection successful, try a simple query
-    let queryResult = null
-    if (connectionResult.success) {
-      try {
-        console.log("Testing a simple query...")
-        const result = await executeQuery("SELECT COUNT(*) as count FROM rental_rates")
-        queryResult = {
-          success: true,
-          count: result[0]?.count || 0,
-        }
-      } catch (queryError) {
-        console.error("Query test failed:", queryError)
-        queryResult = {
-          success: false,
-          error: queryError.message,
-        }
+    if (!result.success) {
+      console.error("Database connection test failed:", result)
+
+      // Special handling for authentication errors
+      if (result.isAuthError) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: "Database authentication failed",
+            details:
+              "The provided database credentials are invalid or expired. Please check your DATABASE_URL environment variable.",
+            errorType: "AuthenticationError",
+            timestamp: new Date().toISOString(),
+          },
+          { status: 401 },
+        )
       }
-    }
 
-    return NextResponse.json(
-      {
-        connection: connectionResult,
-        query: queryResult,
-        environment: {
-          hasNeonHttpEndpoint: !!process.env.NEON_HTTP_ENDPOINT,
-          nodeEnv: process.env.NODE_ENV,
+      return NextResponse.json(
+        {
+          success: false,
+          error: result.error,
+          errorType: result.errorType,
           timestamp: new Date().toISOString(),
         },
-      },
-      { status: connectionResult.success ? 200 : 500 },
-    )
+        { status: 500 },
+      )
+    }
+
+    return NextResponse.json({
+      success: true,
+      message: "Database connection successful",
+      connectionType: result.connectionType,
+      database: result.result?.database,
+      user: result.result?.user,
+      timestamp: result.result?.time || new Date().toISOString(),
+      duration: result.duration,
+    })
   } catch (error) {
-    console.error("Unexpected error in test-db API:", error)
+    console.error("Error in test-db API:", error)
 
     return NextResponse.json(
       {
-        status: "error",
-        message: "Unexpected error testing database connection",
-        error: error.message || "Unknown error",
+        success: false,
+        error: error.message,
+        errorType: error.name,
         timestamp: new Date().toISOString(),
       },
       { status: 500 },

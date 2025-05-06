@@ -2,6 +2,13 @@ import { neon, neonConfig } from "@neondatabase/serverless"
 
 // Add detailed logging
 console.log("Initializing database connection...")
+
+// Sanitize and log the database URL format (without exposing credentials)
+const dbUrlForLogging = process.env.DATABASE_URL
+  ? process.env.DATABASE_URL.replace(/\/\/[^:]+:[^@]+@/, "//[credentials-hidden]@")
+  : "undefined"
+
+console.log("Database URL format:", dbUrlForLogging)
 console.log("Environment check:", {
   hasDbUrl: !!process.env.DATABASE_URL,
   hasNeonHttpEndpoint: !!process.env.NEON_HTTP_ENDPOINT,
@@ -25,15 +32,84 @@ if (process.env.NEON_HTTP_ENDPOINT) {
   neonConfig.wsRetryMaxInterval = 5000
 }
 
+// Parse the DATABASE_URL to extract components
+function parseDbUrl(url) {
+  try {
+    if (!url) return null
+
+    const regex = /^postgres(?:ql)?:\/\/([^:]+):([^@]+)@([^:]+):(\d+)\/(.+)$/
+    const match = url.match(regex)
+
+    if (!match) {
+      console.error("Invalid DATABASE_URL format")
+      return null
+    }
+
+    const [, user, password, host, port, database] = match
+    return { user, password, host, port, database }
+  } catch (error) {
+    console.error("Error parsing DATABASE_URL:", error)
+    return null
+  }
+}
+
+const dbComponents = parseDbUrl(process.env.DATABASE_URL)
+if (dbComponents) {
+  console.log("Database connection components:", {
+    user: dbComponents.user,
+    host: dbComponents.host,
+    port: dbComponents.port,
+    database: dbComponents.database,
+    // Don't log the password
+  })
+}
+
 // Initialize the database connection
-export const sql = neon(process.env.DATABASE_URL!)
+let sql
+try {
+  sql = neon(process.env.DATABASE_URL!)
+  console.log("Database client initialized")
+} catch (error) {
+  console.error("Error initializing database client:", error)
+  // Create a dummy client that will throw a more helpful error
+  sql = {
+    query: () => Promise.reject(new Error("Database client failed to initialize")),
+    unsafe: () => Promise.reject(new Error("Database client failed to initialize")),
+  }
+}
+
+// Create a db object for compatibility with existing code
+const db = {
+  query: async (text, params = []) => {
+    try {
+      return await sql.unsafe(text, params)
+    } catch (error) {
+      console.error("DB query error:", error)
+      throw error
+    }
+  },
+  connect: async () => {
+    try {
+      await sql`SELECT 1`
+      return {
+        release: () => {},
+        query: async (text, params = []) => await sql.unsafe(text, params),
+      }
+    } catch (error) {
+      console.error("DB connect error:", error)
+      throw error
+    }
+  },
+}
+
+export { sql, db }
 
 // Export a function to test the database connection
 export async function testConnection() {
   console.log("Testing database connection...")
   try {
     const startTime = Date.now()
-    const result = await sql`SELECT NOW() as time, current_database() as database, version() as version`
+    const result = await sql`SELECT NOW() as time, current_database() as database, current_user as user`
     const duration = Date.now() - startTime
     console.log(`Database connection successful (${duration}ms)`)
     console.log("Database info:", result[0])
@@ -45,16 +121,24 @@ export async function testConnection() {
     }
   } catch (error) {
     console.error("Database connection error:", error)
-    console.error("Error details:", {
-      message: error.message,
-      name: error.name,
-      stack: error.stack?.split("\n").slice(0, 3).join("\n"),
-      cause: error.cause,
-    })
+
+    // Check for authentication errors
+    const isAuthError =
+      error.message?.includes("authentication") || error.message?.includes("password") || error.message?.includes("401")
+
+    if (isAuthError) {
+      console.error("Authentication error detected. Please check your DATABASE_URL credentials.")
+      // Log the username from the connection string for debugging
+      if (dbComponents) {
+        console.log("Attempted to connect with username:", dbComponents.user)
+      }
+    }
+
     return {
       success: false,
       error: error.message,
       errorType: error.name,
+      isAuthError,
       connectionType: process.env.NEON_HTTP_ENDPOINT ? "HTTP" : "WebSocket",
     }
   }
@@ -74,12 +158,12 @@ export async function executeQuery(query, params = []) {
     return result
   } catch (error) {
     console.error("Query execution error:", error)
-    console.error("Error details:", {
-      message: error.message,
-      name: error.name,
-      query: query.replace(/\s+/g, " ").trim(),
-      params,
-    })
+
+    // Check for authentication errors
+    if (error.message?.includes("authentication") || error.message?.includes("401")) {
+      console.error("Authentication error in query. Please check your DATABASE_URL credentials.")
+    }
+
     throw error
   }
 }
