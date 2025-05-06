@@ -291,17 +291,32 @@ export async function createRentalRate(formData: FormData) {
       active,
     })
 
-    // Get rate zone ID
-    const rateZoneResult = await sql`
-      SELECT id FROM rate_zones WHERE code = ${validatedData.rateZone}
+    // First try to get rate zone ID from zones table (from Zone Management)
+    let rateZoneId
+    const zoneResult = await sql`
+      SELECT id FROM zones WHERE code = ${validatedData.rateZone}
     `
 
-    if (rateZoneResult.length === 0) {
-      console.error(`Rate zone with code "${validatedData.rateZone}" not found in database`)
-      return { error: `Invalid rate zone: "${validatedData.rateZone}" not found` }
-    }
+    if (zoneResult.length > 0) {
+      rateZoneId = zoneResult[0].id
+    } else {
+      // If not found in zones table, try the rate_zones table
+      const rateZoneResult = await sql`
+        SELECT id FROM rate_zones WHERE code = ${validatedData.rateZone}
+      `
 
-    const rateZoneId = rateZoneResult[0].id
+      if (rateZoneResult.length === 0) {
+        // If not found in either table, create a new entry in rate_zones
+        const newRateZone = await sql`
+          INSERT INTO rate_zones (code, name, description)
+          VALUES (${validatedData.rateZone}, ${validatedData.rateZone}, ${validatedData.rateZone})
+          RETURNING id
+        `
+        rateZoneId = newRateZone[0].id
+      } else {
+        rateZoneId = rateZoneResult[0].id
+      }
+    }
 
     // Generate a unique rate ID
     const rateId = await generateRateId()
@@ -398,7 +413,7 @@ export async function createRentalRate(formData: FormData) {
     return { success: true, message: `Rate "${validatedData.rateName}" created successfully` }
   } catch (error) {
     console.error("Error creating rental rate:", error)
-    return { error: "Failed to create rental rate" }
+    return { error: "Failed to create rental rate: " + (error instanceof Error ? error.message : String(error)) }
   }
 }
 
@@ -425,16 +440,32 @@ export async function updateRentalRate(id: string, formData: FormData) {
       active,
     })
 
-    // Get rate zone ID
-    const rateZoneResult = await sql`
-      SELECT id FROM rate_zones WHERE code = ${validatedData.rateZone}
+    // First try to get rate zone ID from zones table (from Zone Management)
+    let rateZoneId
+    const zoneResult = await sql`
+      SELECT id FROM zones WHERE code = ${validatedData.rateZone}
     `
 
-    if (rateZoneResult.length === 0) {
-      return { error: "Invalid rate zone" }
-    }
+    if (zoneResult.length > 0) {
+      rateZoneId = zoneResult[0].id
+    } else {
+      // If not found in zones table, try the rate_zones table
+      const rateZoneResult = await sql`
+        SELECT id FROM rate_zones WHERE code = ${validatedData.rateZone}
+      `
 
-    const rateZoneId = rateZoneResult[0].id
+      if (rateZoneResult.length === 0) {
+        // If not found in either table, create a new entry in rate_zones
+        const newRateZone = await sql`
+          INSERT INTO rate_zones (code, name, description)
+          VALUES (${validatedData.rateZone}, ${validatedData.rateZone}, ${validatedData.rateZone})
+          RETURNING id
+        `
+        rateZoneId = newRateZone[0].id
+      } else {
+        rateZoneId = rateZoneResult[0].id
+      }
+    }
 
     // Update the rental rate
     await sql`
@@ -543,7 +574,7 @@ export async function updateRentalRate(id: string, formData: FormData) {
     return { success: true, message: `Rate "${validatedData.rateName}" updated successfully` }
   } catch (error) {
     console.error("Error updating rental rate:", error)
-    return { error: "Failed to update rental rate" }
+    return { error: "Failed to update rental rate: " + (error instanceof Error ? error.message : String(error)) }
   }
 }
 
@@ -682,6 +713,7 @@ export async function duplicateRentalRate(id: string) {
           // Insert yearly rate
           await sql`
             INSERT INTO other_rates (car_group_rate_id, rate_type, rate_amount)
+            VALUES (${newCarGroupRateId}, 'yearly\', ${carGroup.rate  rate_type, rate_amount)
             VALUES (${newCarGroupRateId}, 'yearly', ${carGroup.ratePackage.yearlyRate})
           `
         }
@@ -711,16 +743,28 @@ export async function duplicateRentalRate(id: string) {
 // Get all rate zones
 export async function getRateZones() {
   try {
+    // First try to get zones from the zones table (Zone Management)
     const zones = await sql`
+      SELECT id, code, description as name, active
+      FROM zones
+      ORDER BY description
+    `
+
+    if (zones.length > 0) {
+      return { zones }
+    }
+
+    // Fallback to rate_zones table if no zones found in zones table
+    const rateZones = await sql`
       SELECT id, code, name, description, active
       FROM rate_zones
       ORDER BY name
     `
 
-    return { zones }
+    return { zones: rateZones }
   } catch (error) {
     console.error("Database error:", error)
-    return { error: "Failed to fetch rate zones" }
+    return { error: "Failed to fetch rate zones", zones: [] }
   }
 }
 
@@ -736,7 +780,7 @@ export async function getVehicleGroups() {
     return { groups }
   } catch (error) {
     console.error("Database error:", error)
-    return { error: "Failed to fetch vehicle groups" }
+    return { error: "Failed to fetch vehicle groups", groups: [] }
   }
 }
 
@@ -752,6 +796,6 @@ export async function getAdditionalOptions() {
     return { options }
   } catch (error) {
     console.error("Database error:", error)
-    return { error: "Failed to fetch additional options" }
+    return { error: "Failed to fetch additional options", options: [] }
   }
 }

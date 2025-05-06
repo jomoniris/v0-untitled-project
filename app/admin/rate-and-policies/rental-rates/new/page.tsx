@@ -1,30 +1,71 @@
-import { getRateZones, getVehicleGroups, getAdditionalOptions } from "@/app/actions/rental-rate-actions"
+"use client"
+
 import { RentalRateForm } from "@/components/rental-rate-form"
-import { getZones } from "@/app/actions/zone-actions"
+import { useEffect, useState } from "react"
+import { getRateZones } from "@/app/actions/rental-rate-actions"
+import { getVehicleGroups, getAdditionalOptions } from "@/app/actions/rental-rate-actions"
 
-export default async function NewRentalRatePage() {
-  // Fetch rate zones, vehicle groups, and additional options
-  const { zones: rateZones } = await getRateZones()
-  const { groups: vehicleGroups } = await getVehicleGroups()
-  const { options: additionalOptions } = await getAdditionalOptions()
+export default function NewRentalRatePage() {
+  const [rateZones, setRateZones] = useState([])
+  const [vehicleGroups, setVehicleGroups] = useState([])
+  const [additionalOptions, setAdditionalOptions] = useState([])
+  const [loading, setLoading] = useState(true)
 
-  // Fetch zones from Zone Management
-  const { zones } = await getZones()
+  useEffect(() => {
+    async function loadData() {
+      try {
+        // Fetch rate zones
+        const { zones, error: zonesError } = await getRateZones()
+        if (zonesError) {
+          console.error("Error loading rate zones:", zonesError)
+        } else {
+          setRateZones(zones || [])
+        }
 
-  // Map zones from Zone Management to the format expected by the form
-  const mappedZones = zones.map((zone) => ({
-    id: zone.id,
-    code: zone.code,
-    name: zone.description,
-  }))
+        // Fetch vehicle groups
+        const { groups, error: groupsError } = await getVehicleGroups()
+        if (groupsError) {
+          console.error("Error loading vehicle groups:", groupsError)
+        } else {
+          setVehicleGroups(groups || [])
+        }
+
+        // Fetch additional options
+        const { options, error: optionsError } = await getAdditionalOptions()
+        if (optionsError) {
+          console.error("Error loading additional options:", optionsError)
+        } else {
+          setAdditionalOptions(options || [])
+        }
+      } catch (err) {
+        console.error("Error loading form data:", err)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    loadData()
+  }, [])
+
+  if (loading) {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Add New Rental Rate</h1>
+          <p className="text-muted-foreground">Loading form data...</p>
+        </div>
+      </div>
+    )
+  }
 
   return (
-    <div className="container mx-auto py-10">
-      <RentalRateForm
-        rateZones={mappedZones || []}
-        vehicleGroups={vehicleGroups || []}
-        additionalOptions={additionalOptions || []}
-      />
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-3xl font-bold tracking-tight">Add New Rental Rate</h1>
+        <p className="text-muted-foreground">Create a new rental rate for a vehicle group</p>
+      </div>
+
+      <RentalRateForm rateZones={rateZones} vehicleGroups={vehicleGroups} additionalOptions={additionalOptions} />
     </div>
   )
 }
