@@ -1,4 +1,15 @@
-import { neon } from "@neondatabase/serverless"
+import { neon, neonConfig } from "@neondatabase/serverless"
+
+// Configure Neon with HTTP fallback
+if (process.env.NEON_HTTP_ENDPOINT) {
+  console.log("Using NEON_HTTP_ENDPOINT for database connection")
+  neonConfig.fetchConnectionCache = true
+  neonConfig.fetchEndpoint = process.env.NEON_HTTP_ENDPOINT
+  neonConfig.useSecureWebSocket = true
+} else {
+  console.log("NEON_HTTP_ENDPOINT not found, using WebSocket only")
+  neonConfig.webSocketConstructor = globalThis.WebSocket
+}
 
 // Initialize the database connection
 export const sql = neon(process.env.DATABASE_URL!)
