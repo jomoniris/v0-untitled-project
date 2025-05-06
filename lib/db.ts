@@ -1,4 +1,5 @@
 import { neon, neonConfig } from "@neondatabase/serverless"
+import { Pool } from "pg"
 
 // Add detailed logging
 console.log("Initializing database connection...")
@@ -65,57 +66,30 @@ if (dbComponents) {
 }
 
 // Initialize the database connection
-let sql
-try {
-  sql = neon(process.env.DATABASE_URL!)
-  console.log("Database client initialized")
-} catch (error) {
-  console.error("Error initializing database client:", error)
-  // Create a dummy client that will throw a more helpful error
-  sql = {
-    query: () => Promise.reject(new Error("Database client failed to initialize")),
-    unsafe: () => Promise.reject(new Error("Database client failed to initialize")),
-  }
-}
+export const sql = neon(process.env.DATABASE_URL!)
 
-// Create a db object for compatibility with existing code
-const db = {
-  query: async (text, params = []) => {
-    try {
-      return await sql.unsafe(text, params)
-    } catch (error) {
-      console.error("DB query error:", error)
-      throw error
-    }
+// Create a pool for compatibility with existing code
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: {
+    rejectUnauthorized: false,
   },
-  connect: async () => {
-    try {
-      await sql`SELECT 1`
-      return {
-        release: () => {},
-        query: async (text, params = []) => await sql.unsafe(text, params),
-      }
-    } catch (error) {
-      console.error("DB connect error:", error)
-      throw error
-    }
-  },
-}
+})
 
-export { sql, db }
+// Export the pool as db for compatibility
+export const db = pool
 
 // Export a function to test the database connection
 export async function testConnection() {
-  console.log("Testing database connection...")
   try {
     const startTime = Date.now()
-    const result = await sql`SELECT NOW() as time, current_database() as database, current_user as user`
+    const result = await sql`SELECT 1 as test`
     const duration = Date.now() - startTime
     console.log(`Database connection successful (${duration}ms)`)
     console.log("Database info:", result[0])
     return {
       success: true,
-      result: result[0],
+      result,
       duration,
       connectionType: process.env.NEON_HTTP_ENDPOINT ? "HTTP" : "WebSocket",
     }
