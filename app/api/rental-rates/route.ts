@@ -6,8 +6,7 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url)
     const filter = searchParams.get("filter") || "all"
 
-    // Use the pool directly for compatibility with existing code
-    const query = `
+    let query = `
       SELECT 
         rr.id, 
         rr.rate_id as "rateId", 
@@ -25,10 +24,16 @@ export async function GET(request: Request) {
         rate_zones rz ON rr.rate_zone_id = rz.id
     `
 
-    const result = await db.query(query)
-    const rates = result.rows || []
+    if (filter === "active") {
+      query += ` WHERE rr.active = true`
+    } else if (filter === "inactive") {
+      query += ` WHERE rr.active = false`
+    }
 
-    return NextResponse.json({ rates })
+    query += ` ORDER BY rr.created_at DESC`
+
+    const result = await db.query(query)
+    return NextResponse.json({ rates: result.rows })
   } catch (error) {
     console.error("Error fetching rental rates:", error)
     return NextResponse.json({ error: "Failed to fetch rental rates", details: String(error) }, { status: 500 })

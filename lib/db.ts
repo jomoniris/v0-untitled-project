@@ -66,7 +66,8 @@ if (dbComponents) {
 }
 
 // Initialize the database connection
-export const sql = neon(process.env.DATABASE_URL!)
+// Initialize neon client
+const sql = neon(process.env.DATABASE_URL!)
 
 // Create a pool for compatibility with existing code
 const pool = new Pool({
@@ -76,45 +77,18 @@ const pool = new Pool({
   },
 })
 
-// Export the pool as db for compatibility
+// Export both interfaces for compatibility with different parts of the codebase
+export { sql }
 export const db = pool
 
 // Export a function to test the database connection
 export async function testConnection() {
   try {
-    const startTime = Date.now()
-    const result = await sql`SELECT 1 as test`
-    const duration = Date.now() - startTime
-    console.log(`Database connection successful (${duration}ms)`)
-    console.log("Database info:", result[0])
-    return {
-      success: true,
-      result,
-      duration,
-      connectionType: process.env.NEON_HTTP_ENDPOINT ? "HTTP" : "WebSocket",
-    }
+    const result = await pool.query("SELECT 1 as test")
+    return { success: true, result: result.rows[0] }
   } catch (error) {
     console.error("Database connection error:", error)
-
-    // Check for authentication errors
-    const isAuthError =
-      error.message?.includes("authentication") || error.message?.includes("password") || error.message?.includes("401")
-
-    if (isAuthError) {
-      console.error("Authentication error detected. Please check your DATABASE_URL credentials.")
-      // Log the username from the connection string for debugging
-      if (dbComponents) {
-        console.log("Attempted to connect with username:", dbComponents.user)
-      }
-    }
-
-    return {
-      success: false,
-      error: error.message,
-      errorType: error.name,
-      isAuthError,
-      connectionType: process.env.NEON_HTTP_ENDPOINT ? "HTTP" : "WebSocket",
-    }
+    return { success: false, error }
   }
 }
 

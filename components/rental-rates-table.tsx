@@ -25,7 +25,7 @@ import {
 import { toast } from "@/components/ui/use-toast"
 import { useRouter } from "next/navigation"
 import { Badge } from "@/components/ui/badge"
-import { deleteRentalRate, duplicateRentalRate, toggleRentalRateStatus } from "@/app/actions/rental-rate-actions"
+import { deleteRentalRate, duplicateRentalRate, toggleRentalRateStatus } from "../app/actions/rental-rate-actions"
 
 interface RentalRatesTableProps {
   rates: any[]
@@ -46,7 +46,7 @@ export function RentalRatesTable({ rates = [] }: RentalRatesTableProps) {
     try {
       const result = await deleteRentalRate(rateToDelete.id)
 
-      if (result.error) {
+      if (!result.success) {
         toast({
           title: "Error",
           description: result.error,
@@ -85,7 +85,7 @@ export function RentalRatesTable({ rates = [] }: RentalRatesTableProps) {
     try {
       const result = await toggleRentalRateStatus(rateId)
 
-      if (result.error) {
+      if (!result.success) {
         toast({
           title: "Error",
           description: result.error,
@@ -117,7 +117,7 @@ export function RentalRatesTable({ rates = [] }: RentalRatesTableProps) {
     try {
       const result = await duplicateRentalRate(rate.id)
 
-      if (result.error) {
+      if (!result.success) {
         toast({
           title: "Error",
           description: result.error,
