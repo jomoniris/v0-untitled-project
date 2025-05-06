@@ -108,7 +108,7 @@ export function RentalRateForm({
 
   // Initialize car group rates with default values
   const defaultCarGroupRates = vehicleGroups.map((group) => ({
-    groupId: group.id.toString(),
+    groupId: typeof group.id === "string" ? group.id : String(group.id),
     groupName: group.name,
     milesPerDay: 0,
     milesRate: 0,
@@ -133,7 +133,7 @@ export function RentalRateForm({
 
   // Initialize additional options with default values
   const defaultAdditionalOptionsData = additionalOptions.map((option) => ({
-    id: option.id.toString(),
+    id: typeof option.id === "string" ? option.id : String(option.id),
     code: option.code,
     description: option.description,
     included: false,
@@ -150,7 +150,7 @@ export function RentalRateForm({
     bookingEndDate: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString().split("T")[0],
     active: true,
     carGroupRates: vehicleGroups.map((group) => ({
-      groupId: group.id.toString(),
+      groupId: typeof group.id === "string" ? group.id : String(group.id),
       groupName: group.name,
       milesPerDay: 0,
       milesRate: 0,
@@ -173,7 +173,7 @@ export function RentalRateForm({
       included: group.id === "1", // Only include Economy by default
     })),
     additionalOptions: additionalOptions.map((option) => ({
-      id: option.id.toString(),
+      id: typeof option.id === "string" ? option.id : String(option.id),
       code: option.code,
       description: option.description,
       included: false,

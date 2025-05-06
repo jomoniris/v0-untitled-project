@@ -172,7 +172,7 @@ async function getCarGroupRatesForRate(rateId: string) {
         cgr.policy_value_pai as "policyValuePAI",
         cgr.deposit_rate_scdw as "depositRateSCDW",
         cgr.policy_value_scdw as "policyValueSCDW",
-        cgr.deposit_rate_cpp as "depositRateCPP",
+        cgr.deposit_rate_cpp as "policyValueCPP",
         cgr.policy_value_cpp as "policyValueCPP",
         cgr.delivery_charges as "deliveryCharges",
         cgr.rate_type as "rateType",
@@ -352,7 +352,7 @@ export async function createRentalRate(formData: FormData) {
             deposit_rate_scdw, policy_value_scdw, deposit_rate_cpp, policy_value_cpp,
             delivery_charges, rate_type, included
           ) VALUES (
-            ${rentalRateId}, ${carGroup.groupId}, ${carGroup.milesPerDay}, ${carGroup.milesRate},
+            ${rentalRateId}, ${Number.parseInt(carGroup.groupId, 10) || 0}, ${carGroup.milesPerDay}, ${carGroup.milesRate},
             ${carGroup.depositRateCDW}, ${carGroup.policyValueCDW}, ${carGroup.depositRatePAI}, ${carGroup.policyValuePAI},
             ${carGroup.depositRateSCDW}, ${carGroup.policyValueSCDW}, ${carGroup.depositRateCPP}, ${carGroup.policyValueCPP},
             ${carGroup.deliveryCharges}, ${carGroup.ratePackage.type}, ${carGroup.included}
@@ -404,7 +404,7 @@ export async function createRentalRate(formData: FormData) {
       for (const option of includedOptions) {
         await sql`
           INSERT INTO rate_additional_options (rental_rate_id, additional_option_id, included, customer_pays)
-          VALUES (${rentalRateId}, ${option.id}, ${option.included}, ${option.customerPays})
+          VALUES (${rentalRateId}, ${Number.parseInt(option.id, 10) || 0}, ${option.included}, ${option.customerPays})
         `
       }
     }
@@ -505,7 +505,7 @@ export async function updateRentalRate(id: string, formData: FormData) {
             deposit_rate_scdw, policy_value_scdw, deposit_rate_cpp, policy_value_cpp,
             delivery_charges, rate_type, included
           ) VALUES (
-            ${id}, ${carGroup.groupId}, ${carGroup.milesPerDay}, ${carGroup.milesRate},
+            ${id}, ${Number.parseInt(carGroup.groupId, 10) || 0}, ${carGroup.milesPerDay}, ${carGroup.milesRate},
             ${carGroup.depositRateCDW}, ${carGroup.policyValueCDW}, ${carGroup.depositRatePAI}, ${carGroup.policyValuePAI},
             ${carGroup.depositRateSCDW}, ${carGroup.policyValueSCDW}, ${carGroup.depositRateCPP}, ${carGroup.policyValueCPP},
             ${carGroup.deliveryCharges}, ${carGroup.ratePackage.type}, ${carGroup.included}
@@ -563,7 +563,7 @@ export async function updateRentalRate(id: string, formData: FormData) {
       for (const option of includedOptions) {
         await sql`
           INSERT INTO rate_additional_options (rental_rate_id, additional_option_id, included, customer_pays)
-          VALUES (${id}, ${option.id}, ${option.included}, ${option.customerPays})
+          VALUES (${id}, ${Number.parseInt(option.id, 10) || 0}, ${option.included}, ${option.customerPays})
         `
       }
     }
@@ -678,7 +678,7 @@ export async function duplicateRentalRate(id: string) {
             deposit_rate_scdw, policy_value_scdw, deposit_rate_cpp, policy_value_cpp,
             delivery_charges, rate_type, included
           ) VALUES (
-            ${newRentalRateId}, ${carGroup.groupId}, ${carGroup.milesPerDay}, ${carGroup.milesRate},
+            ${newRentalRateId}, ${Number.parseInt(carGroup.groupId, 10) || 0}, ${carGroup.milesPerDay}, ${carGroup.milesRate},
             ${carGroup.depositRateCDW}, ${carGroup.policyValueCDW}, ${carGroup.depositRatePAI}, ${carGroup.policyValuePAI},
             ${carGroup.depositRateSCDW}, ${carGroup.policyValueSCDW}, ${carGroup.depositRateCPP}, ${carGroup.policyValueCPP},
             ${carGroup.deliveryCharges}, ${carGroup.ratePackage.type}, ${carGroup.included}
@@ -713,7 +713,6 @@ export async function duplicateRentalRate(id: string) {
           // Insert yearly rate
           await sql`
             INSERT INTO other_rates (car_group_rate_id, rate_type, rate_amount)
-            VALUES (${newCarGroupRateId}, 'yearly\', ${carGroup.rate  rate_type, rate_amount)
             VALUES (${newCarGroupRateId}, 'yearly', ${carGroup.ratePackage.yearlyRate})
           `
         }
@@ -726,7 +725,7 @@ export async function duplicateRentalRate(id: string) {
         if (option.included) {
           await sql`
             INSERT INTO rate_additional_options (rental_rate_id, additional_option_id, included, customer_pays)
-            VALUES (${newRentalRateId}, ${option.id}, ${option.included}, ${option.customerPays})
+            VALUES (${newRentalRateId}, ${Number.parseInt(option.id, 10) || 0}, ${option.included}, ${option.customerPays})
           `
         }
       }

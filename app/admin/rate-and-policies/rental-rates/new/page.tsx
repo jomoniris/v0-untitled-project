@@ -2,8 +2,7 @@
 
 import { RentalRateForm } from "@/components/rental-rate-form"
 import { useEffect, useState } from "react"
-import { getRateZones } from "@/app/actions/rental-rate-actions"
-import { getVehicleGroups, getAdditionalOptions } from "@/app/actions/rental-rate-actions"
+import { getRateZones, getVehicleGroups, getAdditionalOptions } from "@/app/actions/rental-rate-actions"
 
 export default function NewRentalRatePage() {
   const [rateZones, setRateZones] = useState([])
