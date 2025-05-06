@@ -1,34 +1,42 @@
 "use client"
 
-import React from "react"
+import { Component, type ErrorInfo, type ReactNode } from "react"
 
-interface ErrorBoundaryProps {
-  fallback: React.ReactNode
-  children: React.ReactNode
+interface Props {
+  children?: ReactNode
+  fallback?: ReactNode
 }
 
-interface ErrorBoundaryState {
+interface State {
   hasError: boolean
   error?: Error
 }
 
-export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundaryState> {
-  constructor(props: ErrorBoundaryProps) {
-    super(props)
-    this.state = { hasError: false }
+export class ErrorBoundary extends Component<Props, State> {
+  public state: State = {
+    hasError: false,
   }
 
-  static getDerivedStateFromError(error: Error): ErrorBoundaryState {
+  public static getDerivedStateFromError(error: Error): State {
+    // Update state so the next render will show the fallback UI.
     return { hasError: true, error }
   }
 
-  componentDidCatch(error: Error, errorInfo: React.ErrorInfo): void {
-    console.error("Error caught by ErrorBoundary:", error, errorInfo)
+  public componentDidCatch(error: Error, errorInfo: ErrorInfo) {
+    console.error("Uncaught error:", error, errorInfo)
   }
 
-  render(): React.ReactNode {
+  public render() {
     if (this.state.hasError) {
-      return this.props.fallback
+      // You can render any custom fallback UI
+      return (
+        this.props.fallback || (
+          <div className="p-4 border border-red-200 rounded-md bg-red-50">
+            <h2 className="text-lg font-semibold text-red-800">Something went wrong</h2>
+            <p className="text-red-600 mt-2">{this.state.error?.message || "An unexpected error occurred"}</p>
+          </div>
+        )
+      )
     }
 
     return this.props.children

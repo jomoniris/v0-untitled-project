@@ -3,9 +3,9 @@
 import { useState, useEffect } from "react"
 import { useParams } from "next/navigation"
 import dynamic from "next/dynamic"
-import { ErrorBoundary } from "react-error-boundary"
 import { getZoneById } from "@/app/actions/zone-actions"
 import { toast } from "@/components/ui/use-toast"
+import { ErrorBoundary } from "@/components/error-boundary"
 
 // Import ZoneForm with no SSR to avoid ref issues
 const ZoneForm = dynamic(() => import("@/components/zone-form"), { ssr: false })
@@ -85,7 +85,7 @@ export default function EditZonePage() {
       ) : error ? (
         <ErrorFallback />
       ) : (
-        <ErrorBoundary FallbackComponent={ErrorFallback}>
+        <ErrorBoundary>
           <ZoneForm initialData={zoneData} isEditing={true} />
         </ErrorBoundary>
       )}
