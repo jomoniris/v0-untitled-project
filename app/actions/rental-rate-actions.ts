@@ -172,7 +172,7 @@ async function getCarGroupRatesForRate(rateId: string) {
         cgr.policy_value_pai as "policyValuePAI",
         cgr.deposit_rate_scdw as "depositRateSCDW",
         cgr.policy_value_scdw as "policyValueSCDW",
-        cgr.deposit_rate_cpp as "depositRateCPP",
+        cgr.deposit_rate_cpp as "policyValueCPP",
         cgr.policy_value_cpp as "policyValueCPP",
         cgr.delivery_charges as "deliveryCharges",
         cgr.rate_type as "rateType",
@@ -373,50 +373,27 @@ export async function createRentalRate(formData: FormData) {
         console.log("Group ID (before processing):", carGroup.groupId, "Type:", typeof carGroup.groupId)
 
         try {
-          // Use direct SQL query with parameters to avoid type conversion issues
-          const insertCarGroupRateQuery = `
+          // First, insert the car group rate and get the ID directly with SQL
+          const insertResult = await sql`
             INSERT INTO car_group_rates (
               rental_rate_id, vehicle_group_id, miles_per_day, miles_rate,
               deposit_rate_cdw, policy_value_cdw, deposit_rate_pai, policy_value_pai,
               deposit_rate_scdw, policy_value_scdw, deposit_rate_cpp, policy_value_cpp,
               delivery_charges, rate_type, included
             ) VALUES (
-              $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15
+              ${rentalRateId}, ${carGroup.groupId}, ${carGroup.milesPerDay}, ${carGroup.milesRate},
+              ${carGroup.depositRateCDW}, ${carGroup.policyValueCDW}, ${carGroup.depositRatePAI}, ${carGroup.policyValuePAI},
+              ${carGroup.depositRateSCDW}, ${carGroup.policyValueSCDW}, ${carGroup.depositRateCPP}, ${carGroup.policyValueCPP},
+              ${carGroup.deliveryCharges}, ${carGroup.ratePackage.type}, ${carGroup.included}
             )
             RETURNING id
           `
 
-          const params = [
-            rentalRateId,
-            carGroup.groupId, // Pass the groupId as-is without conversion
-            carGroup.milesPerDay,
-            carGroup.milesRate,
-            carGroup.depositRateCDW,
-            carGroup.policyValueCDW,
-            carGroup.depositRatePAI,
-            carGroup.policyValuePAI,
-            carGroup.depositRateSCDW,
-            carGroup.policyValueSCDW,
-            carGroup.depositRateCPP,
-            carGroup.policyValueCPP,
-            carGroup.deliveryCharges,
-            carGroup.ratePackage.type,
-            carGroup.included,
-          ]
-
-          console.log("SQL parameters for car group rate:", params)
-
-          // Execute the query and check the result
-          const carGroupRateResult = await sql.unsafe(insertCarGroupRateQuery, params)
-          console.log("Car group rate result:", carGroupRateResult)
-
-          // Check if we have a valid result with an ID
-          if (!carGroupRateResult || !carGroupRateResult[0] || !carGroupRateResult[0].id) {
-            console.error("Failed to get car group rate ID from result:", carGroupRateResult)
-            throw new Error("Failed to insert car group rate: No ID returned")
+          if (!insertResult || insertResult.length === 0) {
+            throw new Error("Failed to insert car group rate: No ID returned from direct SQL")
           }
 
-          const carGroupRateId = carGroupRateResult[0].id
+          const carGroupRateId = insertResult[0].id
           console.log("Created car group rate with ID:", carGroupRateId)
 
           // Insert rates based on type
@@ -474,22 +451,11 @@ export async function createRentalRate(formData: FormData) {
         console.log("Option ID (before processing):", option.id, "Type:", typeof option.id)
 
         try {
-          // Use raw SQL query to avoid type conversion issues
-          const insertOptionQuery = `
+          // Insert directly with SQL
+          await sql`
             INSERT INTO rate_additional_options (rental_rate_id, additional_option_id, included, customer_pays)
-            VALUES ($1, $2, $3, $4)
+            VALUES (${rentalRateId}, ${option.id}, ${option.included}, ${option.customerPays})
           `
-
-          const params = [
-            rentalRateId,
-            option.id, // Pass the id as-is without conversion
-            option.included,
-            option.customerPays,
-          ]
-
-          console.log("SQL parameters for additional option:", params)
-
-          await sql.unsafe(insertOptionQuery, params)
           console.log("Added additional option successfully")
         } catch (error) {
           console.error("Error inserting additional option:", error)
@@ -620,50 +586,27 @@ export async function updateRentalRate(id: string, formData: FormData) {
         console.log("Group ID (before processing):", carGroup.groupId, "Type:", typeof carGroup.groupId)
 
         try {
-          // Use raw SQL query to avoid type conversion issues
-          const insertCarGroupRateQuery = `
+          // Insert directly with SQL
+          const insertResult = await sql`
             INSERT INTO car_group_rates (
               rental_rate_id, vehicle_group_id, miles_per_day, miles_rate,
               deposit_rate_cdw, policy_value_cdw, deposit_rate_pai, policy_value_pai,
               deposit_rate_scdw, policy_value_scdw, deposit_rate_cpp, policy_value_cpp,
               delivery_charges, rate_type, included
             ) VALUES (
-              $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15
+              ${id}, ${carGroup.groupId}, ${carGroup.milesPerDay}, ${carGroup.milesRate},
+              ${carGroup.depositRateCDW}, ${carGroup.policyValueCDW}, ${carGroup.depositRatePAI}, ${carGroup.policyValuePAI},
+              ${carGroup.depositRateSCDW}, ${carGroup.policyValueSCDW}, ${carGroup.depositRateCPP}, ${carGroup.policyValueCPP},
+              ${carGroup.deliveryCharges}, ${carGroup.ratePackage.type}, ${carGroup.included}
             )
             RETURNING id
           `
 
-          const params = [
-            id,
-            carGroup.groupId, // Pass the groupId as-is without conversion
-            carGroup.milesPerDay,
-            carGroup.milesRate,
-            carGroup.depositRateCDW,
-            carGroup.policyValueCDW,
-            carGroup.depositRatePAI,
-            carGroup.policyValuePAI,
-            carGroup.depositRateSCDW,
-            carGroup.policyValueSCDW,
-            carGroup.depositRateCPP,
-            carGroup.policyValueCPP,
-            carGroup.deliveryCharges,
-            carGroup.ratePackage.type,
-            carGroup.included,
-          ]
-
-          console.log("SQL parameters for car group rate update:", params)
-
-          // Execute the query and check the result
-          const carGroupRateResult = await sql.unsafe(insertCarGroupRateQuery, params)
-          console.log("Car group rate result for update:", carGroupRateResult)
-
-          // Check if we have a valid result with an ID
-          if (!carGroupRateResult || !carGroupRateResult[0] || !carGroupRateResult[0].id) {
-            console.error("Failed to get car group rate ID from result for update:", carGroupRateResult)
-            throw new Error("Failed to insert car group rate: No ID returned")
+          if (!insertResult || insertResult.length === 0) {
+            throw new Error("Failed to insert car group rate: No ID returned from direct SQL")
           }
 
-          const carGroupRateId = carGroupRateResult[0].id
+          const carGroupRateId = insertResult[0].id
           console.log("Created car group rate with ID for update:", carGroupRateId)
 
           // Insert rates based on type
@@ -727,22 +670,11 @@ export async function updateRentalRate(id: string, formData: FormData) {
         console.log("Option ID (before processing):", option.id, "Type:", typeof option.id)
 
         try {
-          // Use raw SQL query to avoid type conversion issues
-          const insertOptionQuery = `
+          // Insert directly with SQL
+          await sql`
             INSERT INTO rate_additional_options (rental_rate_id, additional_option_id, included, customer_pays)
-            VALUES ($1, $2, $3, $4)
+            VALUES (${id}, ${option.id}, ${option.included}, ${option.customerPays})
           `
-
-          const params = [
-            id,
-            option.id, // Pass the id as-is without conversion
-            option.included,
-            option.customerPays,
-          ]
-
-          console.log("SQL parameters for additional option update:", params)
-
-          await sql.unsafe(insertOptionQuery, params)
           console.log("Added additional option successfully for update")
         } catch (error) {
           console.error("Error inserting additional option for update:", error)
@@ -861,46 +793,27 @@ export async function duplicateRentalRate(id: string) {
     for (const carGroup of rate.carGroupRates) {
       if (carGroup.included) {
         try {
-          // Use raw SQL query to avoid type conversion issues
-          const insertCarGroupRateQuery = `
+          // Insert directly with SQL
+          const insertResult = await sql`
             INSERT INTO car_group_rates (
               rental_rate_id, vehicle_group_id, miles_per_day, miles_rate,
               deposit_rate_cdw, policy_value_cdw, deposit_rate_pai, policy_value_pai,
               deposit_rate_scdw, policy_value_scdw, deposit_rate_cpp, policy_value_cpp,
               delivery_charges, rate_type, included
             ) VALUES (
-              $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15
+              ${newRentalRateId}, ${carGroup.groupId}, ${carGroup.milesPerDay}, ${carGroup.milesRate},
+              ${carGroup.depositRateCDW}, ${carGroup.policyValueCDW}, ${carGroup.depositRatePAI}, ${carGroup.policyValuePAI},
+              ${carGroup.depositRateSCDW}, ${carGroup.policyValueSCDW}, ${carGroup.depositRateCPP}, ${carGroup.policyValueCPP},
+              ${carGroup.deliveryCharges}, ${carGroup.ratePackage.type}, ${carGroup.included}
             )
             RETURNING id
           `
 
-          const params = [
-            newRentalRateId,
-            carGroup.groupId, // Pass the groupId as-is without conversion
-            carGroup.milesPerDay,
-            carGroup.milesRate,
-            carGroup.depositRateCDW,
-            carGroup.policyValueCDW,
-            carGroup.depositRatePAI,
-            carGroup.policyValuePAI,
-            carGroup.depositRateSCDW,
-            carGroup.policyValueSCDW,
-            carGroup.depositRateCPP,
-            carGroup.policyValueCPP,
-            carGroup.deliveryCharges,
-            carGroup.ratePackage.type,
-            carGroup.included,
-          ]
-
-          const carGroupRateResult = await sql.unsafe(insertCarGroupRateQuery, params)
-
-          // Check if we have a valid result with an ID
-          if (!carGroupRateResult || !carGroupRateResult[0] || !carGroupRateResult[0].id) {
-            console.error("Failed to get car group rate ID from result for duplication:", carGroupRateResult)
-            throw new Error("Failed to insert car group rate: No ID returned")
+          if (!insertResult || insertResult.length === 0) {
+            throw new Error("Failed to insert car group rate: No ID returned from direct SQL")
           }
 
-          const newCarGroupRateId = carGroupRateResult[0].id
+          const newCarGroupRateId = insertResult[0].id
 
           // Duplicate rates based on type
           if (carGroup.ratePackage.type === "daily" && carGroup.ratePackage.dailyRates) {
@@ -942,18 +855,11 @@ export async function duplicateRentalRate(id: string) {
       for (const option of rate.additionalOptions) {
         if (option.included) {
           try {
-            // Use raw SQL query to avoid type conversion issues
-            const insertOptionQuery = `
+            // Insert directly with SQL
+            await sql`
               INSERT INTO rate_additional_options (rental_rate_id, additional_option_id, included, customer_pays)
-              VALUES ($1, $2, $3, $4)
+              VALUES (${newRentalRateId}, ${option.id}, ${option.included}, ${option.customerPays})
             `
-
-            await sql.unsafe(insertOptionQuery, [
-              newRentalRateId,
-              option.id, // Pass the id as-is without conversion
-              option.included,
-              option.customerPays,
-            ])
           } catch (error) {
             console.error("Error duplicating additional option:", error)
             throw new Error(
