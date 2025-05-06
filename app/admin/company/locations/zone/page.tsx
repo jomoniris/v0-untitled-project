@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Plus, ChevronLeft } from "lucide-react"
 import Link from "next/link"
-import { ErrorBoundary } from "react-error-boundary"
+import { ErrorBoundary } from "@/components/error-boundary"
 import dynamic from "next/dynamic"
 import { getZones, type Zone } from "@/app/actions/zone-actions"
 import { toast } from "@/components/ui/use-toast"
@@ -113,7 +113,7 @@ export default function ZonePage() {
           ) : error ? (
             <ErrorFallback />
           ) : (
-            <ErrorBoundary FallbackComponent={ErrorFallback}>
+            <ErrorBoundary fallback={<ErrorFallback />}>
               <ZoneTable initialZones={zones} />
             </ErrorBoundary>
           )}
