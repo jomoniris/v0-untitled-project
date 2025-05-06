@@ -1,15 +1,8 @@
 "use client"
+
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Button } from "@/components/ui/button"
-import { Edit, MoreHorizontal, Trash2, Eye, Copy } from "lucide-react"
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
+import { Edit, Eye } from "lucide-react"
 import Link from "next/link"
 import { useState } from "react"
 import {
@@ -25,18 +18,44 @@ import {
 import { toast } from "@/components/ui/use-toast"
 import { useRouter } from "next/navigation"
 import { Badge } from "@/components/ui/badge"
-import { deleteRentalRate, duplicateRentalRate, toggleRentalRateStatus } from "../app/actions/rental-rate-actions"
+import { deleteRentalRate, duplicateRentalRate, toggleRentalRateStatus } from "@/app/actions/rental-rate-actions"
+
+interface RentalRate {
+  id: string
+  rateId: string
+  rateName: string
+  pickupStartDate: string
+  pickupEndDate: string
+  rateZone: string
+  bookingStartDate: string
+  bookingEndDate: string
+  active: boolean
+  carGroupRates?: any[]
+}
 
 interface RentalRatesTableProps {
-  rates: any[]
+  rates: RentalRate[]
 }
 
 export function RentalRatesTable({ rates = [] }: RentalRatesTableProps) {
   const router = useRouter()
+  const [expandedRates, setExpandedRates] = useState<Record<string, boolean>>({})
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [rateToDelete, setRateToDelete] = useState<any>(null)
   const [isDeleting, setIsDeleting] = useState(false)
   const [isProcessing, setIsProcessing] = useState(false)
+
+  console.log("Rendering RentalRatesTable with rates:", rates)
+
+  // Ensure rates is an array
+  const ratesArray = Array.isArray(rates) ? rates : []
+
+  const toggleRateExpanded = (rateId: string) => {
+    setExpandedRates((prev) => ({
+      ...prev,
+      [rateId]: !prev[rateId],
+    }))
+  }
 
   const handleDelete = async () => {
     if (!rateToDelete) return
@@ -46,7 +65,7 @@ export function RentalRatesTable({ rates = [] }: RentalRatesTableProps) {
     try {
       const result = await deleteRentalRate(rateToDelete.id)
 
-      if (!result.success) {
+      if (result.error) {
         toast({
           title: "Error",
           description: result.error,
@@ -85,7 +104,7 @@ export function RentalRatesTable({ rates = [] }: RentalRatesTableProps) {
     try {
       const result = await toggleRentalRateStatus(rateId)
 
-      if (!result.success) {
+      if (result.error) {
         toast({
           title: "Error",
           description: result.error,
@@ -117,7 +136,7 @@ export function RentalRatesTable({ rates = [] }: RentalRatesTableProps) {
     try {
       const result = await duplicateRentalRate(rate.id)
 
-      if (!result.success) {
+      if (result.error) {
         toast({
           title: "Error",
           description: result.error,
@@ -142,12 +161,14 @@ export function RentalRatesTable({ rates = [] }: RentalRatesTableProps) {
     }
   }
 
-  if (!rates || rates.length === 0) {
-    return (
-      <div className="text-center p-6 border rounded-md">
-        <p className="text-muted-foreground">No rental rates found.</p>
-      </div>
-    )
+  // Format date for display
+  const formatDate = (dateString: string) => {
+    if (!dateString) return "N/A"
+    try {
+      return new Date(dateString).toLocaleDateString()
+    } catch (e) {
+      return dateString
+    }
   }
 
   return (
@@ -156,76 +177,54 @@ export function RentalRatesTable({ rates = [] }: RentalRatesTableProps) {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Rate Name</TableHead>
+              <TableHead>Rate ID</TableHead>
+              <TableHead>Name</TableHead>
               <TableHead>Pickup Period</TableHead>
-              <TableHead>Booking Period</TableHead>
               <TableHead>Rate Zone</TableHead>
+              <TableHead>Booking Period</TableHead>
               <TableHead>Status</TableHead>
               <TableHead className="text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {rates.map((rate) => (
-              <TableRow key={rate.id}>
-                <TableCell className="font-medium">{rate.rateName}</TableCell>
-                <TableCell>
-                  {new Date(rate.pickupStartDate).toLocaleDateString()} -{" "}
-                  {new Date(rate.pickupEndDate).toLocaleDateString()}
-                </TableCell>
-                <TableCell>
-                  {new Date(rate.bookingStartDate).toLocaleDateString()} -{" "}
-                  {new Date(rate.bookingEndDate).toLocaleDateString()}
-                </TableCell>
-                <TableCell>{rate.rateZone || "N/A"}</TableCell>
-                <TableCell>
-                  <Badge
-                    variant={rate.active ? "default" : "secondary"}
-                    className="cursor-pointer"
-                    onClick={() => handleToggleRateStatus(rate.id)}
-                  >
-                    {rate.active ? "Active" : "Inactive"}
-                  </Badge>
-                </TableCell>
-                <TableCell className="text-right">
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="icon">
-                        <MoreHorizontal className="h-4 w-4" />
-                        <span className="sr-only">Open menu</span>
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem asChild>
-                        <Link href={`/admin/rate-and-policies/rental-rates/${rate.id}/view`}>
-                          <Eye className="mr-2 h-4 w-4" />
-                          View Details
-                        </Link>
-                      </DropdownMenuItem>
-                      <DropdownMenuItem asChild>
-                        <Link href={`/admin/rate-and-policies/rental-rates/${rate.id}/edit`}>
-                          <Edit className="mr-2 h-4 w-4" />
-                          Edit
-                        </Link>
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => handleDuplicateRate(rate)} disabled={isProcessing}>
-                        <Copy className="mr-2 h-4 w-4" />
-                        Duplicate
-                      </DropdownMenuItem>
-                      <DropdownMenuItem
-                        className="text-destructive"
-                        onClick={() => openDeleteDialog(rate)}
-                        disabled={isProcessing}
-                      >
-                        <Trash2 className="mr-2 h-4 w-4" />
-                        Delete
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
+            {ratesArray.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={7} className="h-24 text-center">
+                  No rates found.
                 </TableCell>
               </TableRow>
-            ))}
+            ) : (
+              ratesArray.map((rate) => (
+                <TableRow key={rate.id}>
+                  <TableCell className="font-medium">{rate.rateId || "N/A"}</TableCell>
+                  <TableCell>{rate.rateName || "N/A"}</TableCell>
+                  <TableCell>
+                    {formatDate(rate.pickupStartDate)} - {formatDate(rate.pickupEndDate)}
+                  </TableCell>
+                  <TableCell>{rate.rateZone || "N/A"}</TableCell>
+                  <TableCell>
+                    {formatDate(rate.bookingStartDate)} - {formatDate(rate.bookingEndDate)}
+                  </TableCell>
+                  <TableCell>
+                    <Badge variant={rate.active ? "default" : "secondary"}>{rate.active ? "Active" : "Inactive"}</Badge>
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <div className="flex justify-end gap-2">
+                      <Button variant="outline" size="icon" asChild>
+                        <Link href={`/admin/rate-and-policies/rental-rates/${rate.id}/view`}>
+                          <Eye className="h-4 w-4" />
+                        </Link>
+                      </Button>
+                      <Button variant="outline" size="icon" asChild>
+                        <Link href={`/admin/rate-and-policies/rental-rates/${rate.id}/edit`}>
+                          <Edit className="h-4 w-4" />
+                        </Link>
+                      </Button>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))
+            )}
           </TableBody>
         </Table>
       </div>

@@ -17,13 +17,19 @@ export default function RentalRatesPage() {
         setLoading(true)
         const response = await fetch("/api/rental-rates")
 
+        const data = await response.json()
+        console.log("API response:", data)
+
         if (!response.ok) {
-          throw new Error(`Error fetching rates: ${response.status}`)
+          throw new Error(data.error || `Error fetching rates: ${response.status}`)
         }
 
-        const data = await response.json()
-        console.log("Fetched rental rates:", data)
-        setRates(data.rates || [])
+        if (data.error) {
+          throw new Error(data.error)
+        }
+
+        // Ensure rates is an array
+        setRates(Array.isArray(data.rates) ? data.rates : [])
       } catch (err) {
         console.error("Error fetching rental rates:", err)
         setError(err instanceof Error ? err.message : "Failed to load rental rates")
@@ -60,6 +66,9 @@ export default function RentalRatesPage() {
         <div className="p-8 text-center border rounded-md bg-red-50">
           <p className="text-red-600">{error}</p>
           <p className="text-muted-foreground mt-2">Please check your database connection and try again.</p>
+          <Button variant="outline" className="mt-4" onClick={() => window.location.reload()}>
+            Retry
+          </Button>
         </div>
       ) : rates.length === 0 ? (
         <div className="p-8 text-center border rounded-md">

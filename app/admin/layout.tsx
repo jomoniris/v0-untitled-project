@@ -1,15 +1,17 @@
 import type React from "react"
 import { TopNavbar } from "@/components/top-navbar"
-import { SidebarNav } from "@/components/sidebar-nav"
+import { Toaster } from "@/components/toaster"
 
-export default function AdminLayout({ children }: { children: React.ReactNode }) {
+export default function AdminLayout({
+  children,
+}: {
+  children: React.ReactNode
+}) {
   return (
-    <div className="flex min-h-screen flex-col">
+    <div className="min-h-screen flex flex-col">
       <TopNavbar />
-      <div className="flex flex-1">
-        <SidebarNav />
-        <main className="flex-1 p-6">{children}</main>
-      </div>
+      <main className="flex-1 container mx-auto px-4 py-6">{children}</main>
+      <Toaster />
     </div>
   )
 }

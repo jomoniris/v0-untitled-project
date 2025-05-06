@@ -3,78 +3,112 @@
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { cn } from "@/lib/utils"
-import { Car, Users, FileText, CreditCard, Building, BarChart } from "lucide-react"
+import { Home, Car, Users, FileText, DollarSign, Building, BarChart2 } from "lucide-react"
 
-const navItems = [
-  {
-    title: "Dashboard",
-    href: "/admin",
-    icon: BarChart,
-  },
-  {
-    title: "Rentals",
-    href: "/admin/rentals",
-    icon: Car,
-  },
-  {
-    title: "Customers",
-    href: "/admin/customers",
-    icon: Users,
-  },
-  {
-    title: "Vehicles",
-    href: "/admin/vehicles",
-    icon: Car,
-  },
-  {
-    title: "Fleet",
-    href: "/admin/fleet",
-    icon: Car,
-  },
-  {
-    title: "Company",
-    href: "/admin/company",
-    icon: Building,
-  },
-  {
-    title: "Rates & Policies",
-    href: "/admin/rate-and-policies",
-    icon: FileText,
-  },
-  {
-    title: "Finance",
-    href: "/admin/finance",
-    icon: CreditCard,
-  },
-  {
-    title: "Reports",
-    href: "/admin/reports",
-    icon: BarChart,
-  },
-]
+interface SidebarNavProps {
+  className?: string
+}
 
-export function SidebarNav() {
+export function SidebarNav({ className }: SidebarNavProps) {
   const pathname = usePathname()
 
+  const navItems = [
+    {
+      title: "Dashboard",
+      href: "/admin",
+      icon: <Home className="mr-2 h-4 w-4" />,
+    },
+    {
+      title: "Rentals",
+      href: "/admin/rentals",
+      icon: <FileText className="mr-2 h-4 w-4" />,
+    },
+    {
+      title: "Customers",
+      href: "/admin/customers",
+      icon: <Users className="mr-2 h-4 w-4" />,
+    },
+    {
+      title: "Fleet",
+      href: "/admin/fleet",
+      icon: <Car className="mr-2 h-4 w-4" />,
+      submenu: [
+        {
+          title: "Vehicles",
+          href: "/admin/vehicles",
+        },
+        {
+          title: "Non-Revenue Time",
+          href: "/admin/fleet/nrt",
+        },
+        {
+          title: "Utilization",
+          href: "/admin/fleet/utilization",
+        },
+        {
+          title: "Settings",
+          href: "/admin/fleet/settings",
+        },
+      ],
+    },
+    {
+      title: "Finance",
+      href: "/admin/finance",
+      icon: <DollarSign className="mr-2 h-4 w-4" />,
+    },
+    {
+      title: "Reports",
+      href: "/admin/reports",
+      icon: <BarChart2 className="mr-2 h-4 w-4" />,
+    },
+    {
+      title: "Company",
+      href: "/admin/company",
+      icon: <Building className="mr-2 h-4 w-4" />,
+    },
+  ]
+
   return (
-    <nav className="w-64 bg-gray-50 border-r h-[calc(100vh-4rem)] p-4 hidden md:block">
-      <div className="space-y-1">
-        {navItems.map((item) => (
-          <Link
-            key={item.href}
-            href={item.href}
-            className={cn(
-              "flex items-center py-2 px-3 rounded-md text-sm font-medium",
-              pathname === item.href || pathname?.startsWith(`${item.href}/`)
-                ? "bg-gray-200 text-gray-900"
-                : "text-gray-700 hover:bg-gray-100",
+    <nav className={cn("flex flex-col space-y-1", className)}>
+      {navItems.map((item) => {
+        const isActive = pathname === item.href || pathname.startsWith(`${item.href}/`)
+
+        return (
+          <div key={item.href} className="flex flex-col">
+            <Link
+              href={item.href}
+              className={cn(
+                "flex items-center rounded-md px-3 py-2 text-sm font-medium transition-colors",
+                isActive ? "bg-primary text-primary-foreground" : "hover:bg-muted",
+              )}
+            >
+              {item.icon}
+              {item.title}
+            </Link>
+
+            {item.submenu && isActive && (
+              <div className="ml-6 mt-1 flex flex-col space-y-1">
+                {item.submenu.map((subItem) => {
+                  const isSubActive = pathname === subItem.href || pathname.startsWith(`${subItem.href}/`)
+
+                  return (
+                    <Link
+                      key={subItem.href}
+                      href={subItem.href}
+                      className={cn(
+                        "flex items-center rounded-md px-3 py-2 text-sm font-medium transition-colors",
+                        isSubActive ? "bg-primary/10 text-primary" : "hover:bg-muted",
+                      )}
+                    >
+                      {subItem.title}
+                    </Link>
+                  )
+                })}
+              </div>
             )}
-          >
-            <item.icon className="mr-2 h-4 w-4" />
-            {item.title}
-          </Link>
-        ))}
-      </div>
+          </div>
+        )
+      })}
     </nav>
   )
 }

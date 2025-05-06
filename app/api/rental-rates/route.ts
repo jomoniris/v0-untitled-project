@@ -1,4 +1,4 @@
-import { db } from "@/lib/db"
+import { sql } from "@/lib/db"
 import { NextResponse } from "next/server"
 
 export async function GET(request: Request) {
@@ -6,6 +6,9 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url)
     const filter = searchParams.get("filter") || "all"
 
+    console.log("Fetching rental rates with filter:", filter)
+
+    // First, get the basic rental rates data
     let query = `
       SELECT 
         rr.id, 
@@ -32,8 +35,12 @@ export async function GET(request: Request) {
 
     query += ` ORDER BY rr.created_at DESC`
 
-    const result = await db.query(query)
-    return NextResponse.json({ rates: result.rows })
+    console.log("Executing query:", query)
+    const rates = await sql.unsafe(query)
+    console.log("Query result count:", rates.length)
+
+    // Simplify the response for now to debug the issue
+    return NextResponse.json({ rates })
   } catch (error) {
     console.error("Error fetching rental rates:", error)
     return NextResponse.json({ error: "Failed to fetch rental rates", details: String(error) }, { status: 500 })

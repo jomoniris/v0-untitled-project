@@ -1,67 +1,74 @@
-import Link from "next/link"
-import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { FileText, ChevronRight } from "lucide-react"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 
 export default function RateAndPoliciesPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold tracking-tight">Rates & Policies</h1>
-        <p className="text-muted-foreground">Manage your rental rates and company policies</p>
+        <h1 className="text-3xl font-bold tracking-tight">Rate And Policies</h1>
+        <p className="text-muted-foreground">Manage rental rates, pricing policies, and terms</p>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0">
-            <CardTitle>Rental Rates</CardTitle>
-            <FileText className="h-5 w-5 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <CardDescription className="mb-4">
-              Manage rental rates for different vehicle groups and periods
-            </CardDescription>
-            <Button asChild variant="outline" className="w-full">
-              <Link href="/admin/rate-and-policies/rental-rates" className="flex justify-between items-center">
-                <span>View Rental Rates</span>
-                <ChevronRight className="h-4 w-4" />
-              </Link>
-            </Button>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0">
-            <CardTitle>Policies</CardTitle>
-            <FileText className="h-5 w-5 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <CardDescription className="mb-4">Manage company policies, terms and conditions</CardDescription>
-            <Button asChild variant="outline" className="w-full">
-              <Link href="/admin/rate-and-policies/policies" className="flex justify-between items-center">
-                <span>View Policies</span>
-                <ChevronRight className="h-4 w-4" />
-              </Link>
-            </Button>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0">
-            <CardTitle>Rate Zones</CardTitle>
-            <FileText className="h-5 w-5 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <CardDescription className="mb-4">Manage geographical rate zones for pricing</CardDescription>
-            <Button asChild variant="outline" className="w-full">
-              <Link href="/admin/rate-and-policies/rate-zones" className="flex justify-between items-center">
-                <span>View Rate Zones</span>
-                <ChevronRight className="h-4 w-4" />
-              </Link>
-            </Button>
-          </CardContent>
-        </Card>
-      </div>
+      <Tabs defaultValue="rates" className="space-y-4">
+        <TabsList>
+          <TabsTrigger value="rates">Rates</TabsTrigger>
+          <TabsTrigger value="policies">Policies</TabsTrigger>
+          <TabsTrigger value="terms">Terms & Conditions</TabsTrigger>
+          <TabsTrigger value="discounts">Discounts</TabsTrigger>
+        </TabsList>
+        <TabsContent value="rates" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Rental Rates</CardTitle>
+              <CardDescription>Manage base rates and special pricing</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="h-[350px] flex items-center justify-center">
+                <p className="text-muted-foreground">Rate management will be displayed here</p>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+        <TabsContent value="policies" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Rental Policies</CardTitle>
+              <CardDescription>Configure rental policies and rules</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="h-[350px] flex items-center justify-center">
+                <p className="text-muted-foreground">Policy management will be displayed here</p>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+        <TabsContent value="terms" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Terms & Conditions</CardTitle>
+              <CardDescription>Manage rental terms and conditions</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="h-[350px] flex items-center justify-center">
+                <p className="text-muted-foreground">Terms & conditions management will be displayed here</p>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+        <TabsContent value="discounts" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Discounts & Promotions</CardTitle>
+              <CardDescription>Configure discount rules and promotional offers</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="h-[350px] flex items-center justify-center">
+                <p className="text-muted-foreground">Discount management will be displayed here</p>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
     </div>
   )
 }
