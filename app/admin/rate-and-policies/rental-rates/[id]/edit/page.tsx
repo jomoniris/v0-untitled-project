@@ -1,104 +1,47 @@
-"use client"
-
+import {
+  getRentalRateById,
+  getRateZones,
+  getVehicleGroups,
+  getAdditionalOptions,
+} from "@/app/actions/rental-rate-actions"
 import { RentalRateForm } from "@/components/rental-rate-form"
-import { useParams } from "next/navigation"
-import { useEffect, useState } from "react"
-import { getRentalRateById, getVehicleGroups, getAdditionalOptions } from "@/app/actions/rental-rate-actions"
-import { getRateZones } from "@/app/actions/rate-zone-actions"
+import { getZones } from "@/app/actions/zone-actions"
+import { notFound } from "next/navigation"
 
-export default function EditRentalRatePage() {
-  const params = useParams()
-  const id = params.id as string
-  const [rate, setRate] = useState<any>(null)
-  const [rateZones, setRateZones] = useState([])
-  const [vehicleGroups, setVehicleGroups] = useState([])
-  const [additionalOptions, setAdditionalOptions] = useState([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+export default async function EditRentalRatePage({ params }: { params: { id: string } }) {
+  const { id } = params
 
-  useEffect(() => {
-    async function loadData() {
-      try {
-        // Fetch rate data
-        const { rate: rateData, error: rateError } = await getRentalRateById(id)
-        if (rateError) {
-          setError(rateError)
-        } else if (rateData) {
-          setRate(rateData)
-        } else {
-          setError("Rate not found")
-        }
+  // Fetch the rental rate to edit
+  const { rate, error } = await getRentalRateById(id)
 
-        // Fetch rate zones
-        const { zones, error: zonesError } = await getRateZones()
-        if (zonesError) {
-          console.error("Error loading rate zones:", zonesError)
-        } else {
-          setRateZones(zones || [])
-        }
-
-        // Fetch vehicle groups
-        const { groups, error: groupsError } = await getVehicleGroups()
-        if (groupsError) {
-          console.error("Error loading vehicle groups:", groupsError)
-        } else {
-          setVehicleGroups(groups || [])
-        }
-
-        // Fetch additional options
-        const { options, error: optionsError } = await getAdditionalOptions()
-        if (optionsError) {
-          console.error("Error loading additional options:", optionsError)
-        } else {
-          setAdditionalOptions(options || [])
-        }
-      } catch (err) {
-        setError("Failed to load rate data")
-        console.error(err)
-      } finally {
-        setLoading(false)
-      }
-    }
-
-    loadData()
-  }, [id])
-
-  if (loading) {
-    return (
-      <div className="space-y-6">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Edit Rental Rate</h1>
-          <p className="text-muted-foreground">Loading rate data...</p>
-        </div>
-      </div>
-    )
+  if (error || !rate) {
+    notFound()
   }
 
-  if (error) {
-    return (
-      <div className="space-y-6">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Error</h1>
-          <p className="text-muted-foreground">{error}</p>
-        </div>
-      </div>
-    )
-  }
+  // Fetch rate zones, vehicle groups, and additional options
+  const { zones: rateZones } = await getRateZones()
+  const { groups: vehicleGroups } = await getVehicleGroups()
+  const { options: additionalOptions } = await getAdditionalOptions()
+
+  // Fetch zones from Zone Management
+  const { zones } = await getZones()
+
+  // Map zones from Zone Management to the format expected by the form
+  const mappedZones = zones.map((zone) => ({
+    id: zone.id,
+    code: zone.code,
+    name: zone.description,
+  }))
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">Edit Rental Rate</h1>
-        <p className="text-muted-foreground">Update rental rate information</p>
-      </div>
-
+    <div className="container mx-auto py-10">
       <RentalRateForm
         initialData={rate}
         isEditing={true}
         rateId={id}
-        rateZones={rateZones}
-        vehicleGroups={vehicleGroups}
-        additionalOptions={additionalOptions}
+        rateZones={mappedZones || []}
+        vehicleGroups={vehicleGroups || []}
+        additionalOptions={additionalOptions || []}
       />
     </div>
   )
