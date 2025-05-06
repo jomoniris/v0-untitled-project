@@ -78,7 +78,7 @@ export async function getRentalRates(filter = "all") {
         rr.active
       FROM 
         rental_rates rr
-      JOIN 
+      LEFT JOIN 
         rate_zones rz ON rr.rate_zone_id = rz.id
     `
 
@@ -128,7 +128,7 @@ export async function getRentalRateById(id: string) {
         rr.active
       FROM 
         rental_rates rr
-      JOIN 
+      LEFT JOIN 
         rate_zones rz ON rr.rate_zone_id = rz.id
       WHERE 
         rr.id = ${id} OR rr.rate_id = ${id}
@@ -305,25 +305,32 @@ export async function createRentalRate(formData: FormData) {
 
     console.log("Validated data:", validatedData)
 
-    // First try to get rate zone ID from zones table (from Zone Management)
+    // FIX 1: Improved rate_zone handling
+    // First check if the rate zone already exists
     let rateZoneId
-    const zoneResult = await sql`
-      SELECT id FROM zones WHERE code = ${validatedData.rateZone}
+
+    // Try to get from rate_zones table first
+    const rateZoneResult = await sql`
+      SELECT id FROM rate_zones WHERE code = ${validatedData.rateZone}
     `
 
-    console.log("Zone result:", zoneResult)
+    console.log("Rate zone result:", rateZoneResult)
 
-    if (zoneResult.length > 0) {
-      rateZoneId = zoneResult[0].id
+    if (rateZoneResult.length > 0) {
+      rateZoneId = rateZoneResult[0].id
+      console.log("Found existing rate zone with ID:", rateZoneId)
     } else {
-      // If not found in zones table, try the rate_zones table
-      const rateZoneResult = await sql`
-        SELECT id FROM rate_zones WHERE code = ${validatedData.rateZone}
+      // If not found, try the zones table
+      const zoneResult = await sql`
+        SELECT id FROM zones WHERE code = ${validatedData.rateZone}
       `
 
-      console.log("Rate zone result:", rateZoneResult)
+      console.log("Zone result:", zoneResult)
 
-      if (rateZoneResult.length === 0) {
+      if (zoneResult.length > 0) {
+        rateZoneId = zoneResult[0].id
+        console.log("Found existing zone with ID:", rateZoneId)
+      } else {
         // If not found in either table, create a new entry in rate_zones
         const newRateZone = await sql`
           INSERT INTO rate_zones (code, name, description)
@@ -332,9 +339,6 @@ export async function createRentalRate(formData: FormData) {
         `
         rateZoneId = newRateZone[0].id
         console.log("Created new rate zone with ID:", rateZoneId)
-      } else {
-        rateZoneId = rateZoneResult[0].id
-        console.log("Found existing rate zone with ID:", rateZoneId)
       }
     }
 
@@ -373,8 +377,8 @@ export async function createRentalRate(formData: FormData) {
         console.log("Group ID (before processing):", carGroup.groupId, "Type:", typeof carGroup.groupId)
 
         try {
-          // First, insert the car group rate and get the ID directly with SQL
-          const insertResult = await sql`
+          // Insert the car group rate
+          const carGroupRateResult = await sql`
             INSERT INTO car_group_rates (
               rental_rate_id, vehicle_group_id, miles_per_day, miles_rate,
               deposit_rate_cdw, policy_value_cdw, deposit_rate_pai, policy_value_pai,
@@ -389,44 +393,49 @@ export async function createRentalRate(formData: FormData) {
             RETURNING id
           `
 
-          if (!insertResult || insertResult.length === 0) {
-            throw new Error("Failed to insert car group rate: No ID returned from direct SQL")
-          }
-
-          const carGroupRateId = insertResult[0].id
+          const carGroupRateId = carGroupRateResult[0].id
           console.log("Created car group rate with ID:", carGroupRateId)
 
+          // FIX 2: Improved other_rates handling
           // Insert rates based on type
           if (carGroup.ratePackage.type === "daily" && carGroup.ratePackage.dailyRates) {
             console.log("Processing daily rates")
             // Insert daily rates
             for (let i = 0; i < carGroup.ratePackage.dailyRates.length; i++) {
-              await sql`
-                INSERT INTO daily_rates (car_group_rate_id, day_number, rate_amount)
-                VALUES (${carGroupRateId}, ${i + 1}, ${carGroup.ratePackage.dailyRates[i]})
-              `
+              const rate = carGroup.ratePackage.dailyRates[i]
+              if (rate > 0) {
+                // Only insert non-zero rates
+                await sql`
+                  INSERT INTO daily_rates (car_group_rate_id, day_number, rate_amount)
+                  VALUES (${carGroupRateId}, ${i + 1}, ${rate})
+                `
+                console.log(`Inserted daily rate for day ${i + 1}: ${rate}`)
+              }
             }
           } else if (carGroup.ratePackage.type === "weekly" && carGroup.ratePackage.weeklyRate) {
-            console.log("Processing weekly rate")
+            console.log("Processing weekly rate:", carGroup.ratePackage.weeklyRate)
             // Insert weekly rate
             await sql`
               INSERT INTO other_rates (car_group_rate_id, rate_type, rate_amount)
               VALUES (${carGroupRateId}, 'weekly', ${carGroup.ratePackage.weeklyRate})
             `
+            console.log("Inserted weekly rate successfully")
           } else if (carGroup.ratePackage.type === "monthly" && carGroup.ratePackage.monthlyRate) {
-            console.log("Processing monthly rate")
+            console.log("Processing monthly rate:", carGroup.ratePackage.monthlyRate)
             // Insert monthly rate
             await sql`
               INSERT INTO other_rates (car_group_rate_id, rate_type, rate_amount)
               VALUES (${carGroupRateId}, 'monthly', ${carGroup.ratePackage.monthlyRate})
             `
+            console.log("Inserted monthly rate successfully")
           } else if (carGroup.ratePackage.type === "yearly" && carGroup.ratePackage.yearlyRate) {
-            console.log("Processing yearly rate")
+            console.log("Processing yearly rate:", carGroup.ratePackage.yearlyRate)
             // Insert yearly rate
             await sql`
               INSERT INTO other_rates (car_group_rate_id, rate_type, rate_amount)
               VALUES (${carGroupRateId}, 'yearly', ${carGroup.ratePackage.yearlyRate})
             `
+            console.log("Inserted yearly rate successfully")
           }
         } catch (error) {
           console.error("Error inserting car group rate:", error)
@@ -435,6 +444,7 @@ export async function createRentalRate(formData: FormData) {
       }
     }
 
+    // FIX 3: Improved rate_additional_options handling
     // Process additional options
     const additionalOptionsJson = formData.get("additionalOptions") as string
     if (additionalOptionsJson) {
@@ -451,17 +461,30 @@ export async function createRentalRate(formData: FormData) {
         console.log("Option ID (before processing):", option.id, "Type:", typeof option.id)
 
         try {
-          // Insert directly with SQL
+          // Ensure the option ID is valid
+          const optionId = option.id.toString()
+
+          // Check if the option exists in the additional_options table
+          const optionExists = await sql`
+            SELECT id FROM additional_options WHERE id = ${optionId}
+          `
+
+          if (optionExists.length === 0) {
+            console.warn(`Additional option with ID ${optionId} does not exist, skipping`)
+            continue
+          }
+
+          // Insert the additional option
           await sql`
             INSERT INTO rate_additional_options (rental_rate_id, additional_option_id, included, customer_pays)
-            VALUES (${rentalRateId}, ${option.id}, ${option.included}, ${option.customerPays})
+            VALUES (${rentalRateId}, ${optionId}, ${option.included}, ${option.customerPays})
           `
-          console.log("Added additional option successfully")
+          console.log(`Added additional option ${optionId} successfully`)
         } catch (error) {
           console.error("Error inserting additional option:", error)
-          throw new Error(
-            `Error inserting additional option: ${error instanceof Error ? error.message : String(error)}`,
-          )
+          console.error("Option details:", option)
+          // Continue with other options instead of failing completely
+          console.warn(`Skipping option ${option.id} due to error`)
         }
       }
     }
@@ -514,25 +537,32 @@ export async function updateRentalRate(id: string, formData: FormData) {
       active,
     })
 
-    // First try to get rate zone ID from zones table (from Zone Management)
+    // FIX 1: Improved rate_zone handling for updates
+    // First check if the rate zone already exists
     let rateZoneId
-    const zoneResult = await sql`
-      SELECT id FROM zones WHERE code = ${validatedData.rateZone}
+
+    // Try to get from rate_zones table first
+    const rateZoneResult = await sql`
+      SELECT id FROM rate_zones WHERE code = ${validatedData.rateZone}
     `
 
-    console.log("Zone result for update:", zoneResult)
+    console.log("Rate zone result for update:", rateZoneResult)
 
-    if (zoneResult.length > 0) {
-      rateZoneId = zoneResult[0].id
+    if (rateZoneResult.length > 0) {
+      rateZoneId = rateZoneResult[0].id
+      console.log("Found existing rate zone with ID for update:", rateZoneId)
     } else {
-      // If not found in zones table, try the rate_zones table
-      const rateZoneResult = await sql`
-        SELECT id FROM rate_zones WHERE code = ${validatedData.rateZone}
+      // If not found, try the zones table
+      const zoneResult = await sql`
+        SELECT id FROM zones WHERE code = ${validatedData.rateZone}
       `
 
-      console.log("Rate zone result for update:", rateZoneResult)
+      console.log("Zone result for update:", zoneResult)
 
-      if (rateZoneResult.length === 0) {
+      if (zoneResult.length > 0) {
+        rateZoneId = zoneResult[0].id
+        console.log("Found existing zone with ID for update:", rateZoneId)
+      } else {
         // If not found in either table, create a new entry in rate_zones
         const newRateZone = await sql`
           INSERT INTO rate_zones (code, name, description)
@@ -541,9 +571,6 @@ export async function updateRentalRate(id: string, formData: FormData) {
         `
         rateZoneId = newRateZone[0].id
         console.log("Created new rate zone with ID for update:", rateZoneId)
-      } else {
-        rateZoneId = rateZoneResult[0].id
-        console.log("Found existing rate zone with ID for update:", rateZoneId)
       }
     }
 
@@ -570,12 +597,27 @@ export async function updateRentalRate(id: string, formData: FormData) {
       console.log("Car group rates JSON for update:", carGroupRatesJson)
       const carGroupRates = JSON.parse(carGroupRatesJson) as CarGroupRate[]
 
-      // Delete existing car group rates
+      // Delete existing car group rates and related data
+      // FIX: First delete dependent records to avoid foreign key constraint errors
+      await sql`
+        DELETE FROM daily_rates 
+        WHERE car_group_rate_id IN (
+          SELECT id FROM car_group_rates WHERE rental_rate_id = ${id}
+        )
+      `
+
+      await sql`
+        DELETE FROM other_rates 
+        WHERE car_group_rate_id IN (
+          SELECT id FROM car_group_rates WHERE rental_rate_id = ${id}
+        )
+      `
+
       await sql`
         DELETE FROM car_group_rates
         WHERE rental_rate_id = ${id}
       `
-      console.log("Deleted existing car group rates")
+      console.log("Deleted existing car group rates and related data")
 
       // Only process included car groups
       const includedCarGroups = carGroupRates.filter((group) => group.included)
@@ -586,8 +628,8 @@ export async function updateRentalRate(id: string, formData: FormData) {
         console.log("Group ID (before processing):", carGroup.groupId, "Type:", typeof carGroup.groupId)
 
         try {
-          // Insert directly with SQL
-          const insertResult = await sql`
+          // Insert the car group rate
+          const carGroupRateResult = await sql`
             INSERT INTO car_group_rates (
               rental_rate_id, vehicle_group_id, miles_per_day, miles_rate,
               deposit_rate_cdw, policy_value_cdw, deposit_rate_pai, policy_value_pai,
@@ -602,44 +644,49 @@ export async function updateRentalRate(id: string, formData: FormData) {
             RETURNING id
           `
 
-          if (!insertResult || insertResult.length === 0) {
-            throw new Error("Failed to insert car group rate: No ID returned from direct SQL")
-          }
-
-          const carGroupRateId = insertResult[0].id
+          const carGroupRateId = carGroupRateResult[0].id
           console.log("Created car group rate with ID for update:", carGroupRateId)
 
+          // FIX 2: Improved other_rates handling for updates
           // Insert rates based on type
           if (carGroup.ratePackage.type === "daily" && carGroup.ratePackage.dailyRates) {
             console.log("Processing daily rates for update")
             // Insert daily rates
             for (let i = 0; i < carGroup.ratePackage.dailyRates.length; i++) {
-              await sql`
-                INSERT INTO daily_rates (car_group_rate_id, day_number, rate_amount)
-                VALUES (${carGroupRateId}, ${i + 1}, ${carGroup.ratePackage.dailyRates[i]})
-              `
+              const rate = carGroup.ratePackage.dailyRates[i]
+              if (rate > 0) {
+                // Only insert non-zero rates
+                await sql`
+                  INSERT INTO daily_rates (car_group_rate_id, day_number, rate_amount)
+                  VALUES (${carGroupRateId}, ${i + 1}, ${rate})
+                `
+                console.log(`Inserted daily rate for day ${i + 1}: ${rate}`)
+              }
             }
           } else if (carGroup.ratePackage.type === "weekly" && carGroup.ratePackage.weeklyRate) {
-            console.log("Processing weekly rate for update")
+            console.log("Processing weekly rate for update:", carGroup.ratePackage.weeklyRate)
             // Insert weekly rate
             await sql`
               INSERT INTO other_rates (car_group_rate_id, rate_type, rate_amount)
               VALUES (${carGroupRateId}, 'weekly', ${carGroup.ratePackage.weeklyRate})
             `
+            console.log("Inserted weekly rate successfully for update")
           } else if (carGroup.ratePackage.type === "monthly" && carGroup.ratePackage.monthlyRate) {
-            console.log("Processing monthly rate for update")
+            console.log("Processing monthly rate for update:", carGroup.ratePackage.monthlyRate)
             // Insert monthly rate
             await sql`
               INSERT INTO other_rates (car_group_rate_id, rate_type, rate_amount)
               VALUES (${carGroupRateId}, 'monthly', ${carGroup.ratePackage.monthlyRate})
             `
+            console.log("Inserted monthly rate successfully for update")
           } else if (carGroup.ratePackage.type === "yearly" && carGroup.ratePackage.yearlyRate) {
-            console.log("Processing yearly rate for update")
+            console.log("Processing yearly rate for update:", carGroup.ratePackage.yearlyRate)
             // Insert yearly rate
             await sql`
               INSERT INTO other_rates (car_group_rate_id, rate_type, rate_amount)
               VALUES (${carGroupRateId}, 'yearly', ${carGroup.ratePackage.yearlyRate})
             `
+            console.log("Inserted yearly rate successfully for update")
           }
         } catch (error) {
           console.error("Error inserting car group rate for update:", error)
@@ -648,6 +695,7 @@ export async function updateRentalRate(id: string, formData: FormData) {
       }
     }
 
+    // FIX 3: Improved rate_additional_options handling for updates
     // Process additional options
     const additionalOptionsJson = formData.get("additionalOptions") as string
     if (additionalOptionsJson) {
@@ -670,17 +718,30 @@ export async function updateRentalRate(id: string, formData: FormData) {
         console.log("Option ID (before processing):", option.id, "Type:", typeof option.id)
 
         try {
-          // Insert directly with SQL
+          // Ensure the option ID is valid
+          const optionId = option.id.toString()
+
+          // Check if the option exists in the additional_options table
+          const optionExists = await sql`
+            SELECT id FROM additional_options WHERE id = ${optionId}
+          `
+
+          if (optionExists.length === 0) {
+            console.warn(`Additional option with ID ${optionId} does not exist, skipping`)
+            continue
+          }
+
+          // Insert the additional option
           await sql`
             INSERT INTO rate_additional_options (rental_rate_id, additional_option_id, included, customer_pays)
-            VALUES (${id}, ${option.id}, ${option.included}, ${option.customerPays})
+            VALUES (${id}, ${optionId}, ${option.included}, ${option.customerPays})
           `
-          console.log("Added additional option successfully for update")
+          console.log(`Added additional option ${optionId} successfully for update`)
         } catch (error) {
           console.error("Error inserting additional option for update:", error)
-          throw new Error(
-            `Error inserting additional option: ${error instanceof Error ? error.message : String(error)}`,
-          )
+          console.error("Option details:", option)
+          // Continue with other options instead of failing completely
+          console.warn(`Skipping option ${option.id} due to error`)
         }
       }
     }
@@ -819,10 +880,14 @@ export async function duplicateRentalRate(id: string) {
           if (carGroup.ratePackage.type === "daily" && carGroup.ratePackage.dailyRates) {
             // Insert daily rates
             for (let i = 0; i < carGroup.ratePackage.dailyRates.length; i++) {
-              await sql`
-                INSERT INTO daily_rates (car_group_rate_id, day_number, rate_amount)
-                VALUES (${newCarGroupRateId}, ${i + 1}, ${carGroup.ratePackage.dailyRates[i]})
-              `
+              const rate = carGroup.ratePackage.dailyRates[i]
+              if (rate > 0) {
+                // Only insert non-zero rates
+                await sql`
+                  INSERT INTO daily_rates (car_group_rate_id, day_number, rate_amount)
+                  VALUES (${newCarGroupRateId}, ${i + 1}, ${rate})
+                `
+              }
             }
           } else if (carGroup.ratePackage.type === "weekly" && carGroup.ratePackage.weeklyRate) {
             // Insert weekly rate
@@ -855,16 +920,27 @@ export async function duplicateRentalRate(id: string) {
       for (const option of rate.additionalOptions) {
         if (option.included) {
           try {
+            // Ensure the option ID is valid
+            const optionId = option.id.toString()
+
+            // Check if the option exists in the additional_options table
+            const optionExists = await sql`
+              SELECT id FROM additional_options WHERE id = ${optionId}
+            `
+
+            if (optionExists.length === 0) {
+              console.warn(`Additional option with ID ${optionId} does not exist, skipping`)
+              continue
+            }
+
             // Insert directly with SQL
             await sql`
               INSERT INTO rate_additional_options (rental_rate_id, additional_option_id, included, customer_pays)
-              VALUES (${newRentalRateId}, ${option.id}, ${option.included}, ${option.customerPays})
+              VALUES (${newRentalRateId}, ${optionId}, ${option.included}, ${option.customerPays})
             `
           } catch (error) {
             console.error("Error duplicating additional option:", error)
-            throw new Error(
-              `Error duplicating additional option: ${error instanceof Error ? error.message : String(error)}`,
-            )
+            console.warn(`Skipping option ${option.id} due to error`)
           }
         }
       }

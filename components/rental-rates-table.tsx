@@ -31,16 +31,21 @@ import { Badge } from "@/components/ui/badge"
 import { deleteRentalRate, duplicateRentalRate, toggleRentalRateStatus } from "@/app/actions/rental-rate-actions"
 
 interface RentalRatesTableProps {
-  rates: any[]
+  rates: any[] | null
 }
 
-export function RentalRatesTable({ rates = [] }: RentalRatesTableProps) {
+export function RentalRatesTable({ rates }: RentalRatesTableProps) {
   const router = useRouter()
   const [expandedRates, setExpandedRates] = useState<Record<string, boolean>>({})
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [rateToDelete, setRateToDelete] = useState<any>(null)
   const [isDeleting, setIsDeleting] = useState(false)
   const [isProcessing, setIsProcessing] = useState(false)
+
+  console.log("Rendering RentalRatesTable with rates:", rates)
+
+  // Ensure rates is an array
+  const ratesArray = Array.isArray(rates) ? rates : []
 
   const toggleRateExpanded = (rateId: string) => {
     setExpandedRates((prev) => ({
@@ -153,7 +158,7 @@ export function RentalRatesTable({ rates = [] }: RentalRatesTableProps) {
     }
   }
 
-  if (!rates || rates.length === 0) {
+  if (!ratesArray || ratesArray.length === 0) {
     return (
       <div className="text-center p-6 border rounded-md">
         <p className="text-muted-foreground">No rental rates found.</p>
@@ -177,7 +182,7 @@ export function RentalRatesTable({ rates = [] }: RentalRatesTableProps) {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {rates.map((rate) => (
+            {ratesArray.map((rate) => (
               <React.Fragment key={rate.id}>
                 <TableRow>
                   <TableCell>
@@ -194,7 +199,7 @@ export function RentalRatesTable({ rates = [] }: RentalRatesTableProps) {
                     {new Date(rate.bookingStartDate).toLocaleDateString()} -{" "}
                     {new Date(rate.bookingEndDate).toLocaleDateString()}
                   </TableCell>
-                  <TableCell>{rate.rateZone}</TableCell>
+                  <TableCell>{rate.rateZone || "N/A"}</TableCell>
                   <TableCell>
                     <Badge
                       variant={rate.active ? "default" : "secondary"}
@@ -263,29 +268,32 @@ export function RentalRatesTable({ rates = [] }: RentalRatesTableProps) {
                             </TableRow>
                           </TableHeader>
                           <TableBody>
-                            {rate.carGroupRates
-                              .filter((group: any) => group.included)
-                              .map((carGroup: any) => (
-                                <TableRow key={carGroup.groupId}>
-                                  <TableCell className="font-medium">{carGroup.groupName}</TableCell>
-                                  <TableCell>{carGroup.milesPerDay}</TableCell>
-                                  <TableCell>${Number.parseFloat(carGroup.milesRate).toFixed(2)}</TableCell>
-                                  <TableCell>
-                                    {carGroup.ratePackage.type === "daily" && carGroup.ratePackage.dailyRates
-                                      ? `$${Number.parseFloat(carGroup.ratePackage.dailyRates[0]).toFixed(2)}`
-                                      : carGroup.ratePackage.type === "weekly" && carGroup.ratePackage.weeklyRate
-                                        ? `$${Number.parseFloat(carGroup.ratePackage.weeklyRate).toFixed(2)}/week`
-                                        : carGroup.ratePackage.type === "monthly" && carGroup.ratePackage.monthlyRate
-                                          ? `$${Number.parseFloat(carGroup.ratePackage.monthlyRate).toFixed(2)}/month`
-                                          : carGroup.ratePackage.type === "yearly" && carGroup.ratePackage.yearlyRate
-                                            ? `$${Number.parseFloat(carGroup.ratePackage.yearlyRate).toFixed(2)}/year`
-                                            : "N/A"}
-                                  </TableCell>
-                                  <TableCell>${Number.parseFloat(carGroup.deliveryCharges).toFixed(2)}</TableCell>
-                                  <TableCell>${Number.parseFloat(carGroup.depositRateCDW).toFixed(2)}</TableCell>
-                                  <TableCell>${Number.parseFloat(carGroup.depositRatePAI).toFixed(2)}</TableCell>
-                                </TableRow>
-                              ))}
+                            {Array.isArray(rate.carGroupRates) &&
+                              rate.carGroupRates
+                                .filter((group: any) => group.included)
+                                .map((carGroup: any) => (
+                                  <TableRow key={carGroup.groupId}>
+                                    <TableCell className="font-medium">{carGroup.groupName}</TableCell>
+                                    <TableCell>{carGroup.milesPerDay}</TableCell>
+                                    <TableCell>${Number.parseFloat(carGroup.milesRate).toFixed(2)}</TableCell>
+                                    <TableCell>
+                                      {carGroup.ratePackage?.type === "daily" && carGroup.ratePackage?.dailyRates
+                                        ? `$${Number.parseFloat(carGroup.ratePackage.dailyRates[0]).toFixed(2)}`
+                                        : carGroup.ratePackage?.type === "weekly" && carGroup.ratePackage?.weeklyRate
+                                          ? `$${Number.parseFloat(carGroup.ratePackage.weeklyRate).toFixed(2)}/week`
+                                          : carGroup.ratePackage?.type === "monthly" &&
+                                              carGroup.ratePackage?.monthlyRate
+                                            ? `$${Number.parseFloat(carGroup.ratePackage.monthlyRate).toFixed(2)}/month`
+                                            : carGroup.ratePackage?.type === "yearly" &&
+                                                carGroup.ratePackage?.yearlyRate
+                                              ? `$${Number.parseFloat(carGroup.ratePackage.yearlyRate).toFixed(2)}/year`
+                                              : "N/A"}
+                                    </TableCell>
+                                    <TableCell>${Number.parseFloat(carGroup.deliveryCharges).toFixed(2)}</TableCell>
+                                    <TableCell>${Number.parseFloat(carGroup.depositRateCDW).toFixed(2)}</TableCell>
+                                    <TableCell>${Number.parseFloat(carGroup.depositRatePAI).toFixed(2)}</TableCell>
+                                  </TableRow>
+                                ))}
                           </TableBody>
                         </Table>
                       </div>
