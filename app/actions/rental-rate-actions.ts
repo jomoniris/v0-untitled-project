@@ -172,7 +172,7 @@ async function getCarGroupRatesForRate(rateId: string) {
         cgr.policy_value_pai as "policyValuePAI",
         cgr.deposit_rate_scdw as "depositRateSCDW",
         cgr.policy_value_scdw as "policyValueSCDW",
-        cgr.deposit_rate_cpp as "policyValueCPP",
+        cgr.deposit_rate_cpp as "depositRateCPP",
         cgr.policy_value_cpp as "policyValueCPP",
         cgr.delivery_charges as "deliveryCharges",
         cgr.rate_type as "rateType",
@@ -271,6 +271,8 @@ async function getAdditionalOptionsForRate(rateId: string) {
 // Create a new rental rate
 export async function createRentalRate(formData: FormData) {
   try {
+    console.log("Starting rental rate creation process")
+
     // Extract and validate basic rate information
     const rateName = formData.get("rateName") as string
     const pickupStartDate = formData.get("pickupStartDate") as string
@@ -279,6 +281,16 @@ export async function createRentalRate(formData: FormData) {
     const bookingStartDate = formData.get("bookingStartDate") as string
     const bookingEndDate = formData.get("bookingEndDate") as string
     const active = formData.get("active") === "true"
+
+    console.log("Basic rate information:", {
+      rateName,
+      pickupStartDate,
+      pickupEndDate,
+      rateZone,
+      bookingStartDate,
+      bookingEndDate,
+      active,
+    })
 
     // Validate using zod
     const validatedData = rentalRateSchema.parse({
@@ -291,11 +303,15 @@ export async function createRentalRate(formData: FormData) {
       active,
     })
 
+    console.log("Validated data:", validatedData)
+
     // First try to get rate zone ID from zones table (from Zone Management)
     let rateZoneId
     const zoneResult = await sql`
       SELECT id FROM zones WHERE code = ${validatedData.rateZone}
     `
+
+    console.log("Zone result:", zoneResult)
 
     if (zoneResult.length > 0) {
       rateZoneId = zoneResult[0].id
@@ -305,6 +321,8 @@ export async function createRentalRate(formData: FormData) {
         SELECT id FROM rate_zones WHERE code = ${validatedData.rateZone}
       `
 
+      console.log("Rate zone result:", rateZoneResult)
+
       if (rateZoneResult.length === 0) {
         // If not found in either table, create a new entry in rate_zones
         const newRateZone = await sql`
@@ -313,13 +331,16 @@ export async function createRentalRate(formData: FormData) {
           RETURNING id
         `
         rateZoneId = newRateZone[0].id
+        console.log("Created new rate zone with ID:", rateZoneId)
       } else {
         rateZoneId = rateZoneResult[0].id
+        console.log("Found existing rate zone with ID:", rateZoneId)
       }
     }
 
     // Generate a unique rate ID
     const rateId = await generateRateId()
+    console.log("Generated rate ID:", rateId)
 
     // Insert the rental rate
     const result = await sql`
@@ -334,61 +355,105 @@ export async function createRentalRate(formData: FormData) {
     `
 
     const rentalRateId = result[0].id
+    console.log("Created rental rate with ID:", rentalRateId)
 
     // Process car group rates
     const carGroupRatesJson = formData.get("carGroupRates") as string
     if (carGroupRatesJson) {
+      console.log("Car group rates JSON:", carGroupRatesJson)
       const carGroupRates = JSON.parse(carGroupRatesJson) as CarGroupRate[]
+      console.log("Parsed car group rates:", carGroupRates)
 
       // Only process included car groups
       const includedCarGroups = carGroupRates.filter((group) => group.included)
+      console.log("Included car groups:", includedCarGroups)
 
       for (const carGroup of includedCarGroups) {
-        // Insert car group rate
-        const carGroupRateResult = await sql`
-          INSERT INTO car_group_rates (
-            rental_rate_id, vehicle_group_id, miles_per_day, miles_rate,
-            deposit_rate_cdw, policy_value_cdw, deposit_rate_pai, policy_value_pai,
-            deposit_rate_scdw, policy_value_scdw, deposit_rate_cpp, policy_value_cpp,
-            delivery_charges, rate_type, included
-          ) VALUES (
-            ${rentalRateId}, ${Number.parseInt(carGroup.groupId, 10) || 0}, ${carGroup.milesPerDay}, ${carGroup.milesRate},
-            ${carGroup.depositRateCDW}, ${carGroup.policyValueCDW}, ${carGroup.depositRatePAI}, ${carGroup.policyValuePAI},
-            ${carGroup.depositRateSCDW}, ${carGroup.policyValueSCDW}, ${carGroup.depositRateCPP}, ${carGroup.policyValueCPP},
-            ${carGroup.deliveryCharges}, ${carGroup.ratePackage.type}, ${carGroup.included}
-          )
-          RETURNING id
-        `
+        console.log("Processing car group:", carGroup)
+        console.log("Group ID (before processing):", carGroup.groupId, "Type:", typeof carGroup.groupId)
 
-        const carGroupRateId = carGroupRateResult[0].id
+        try {
+          // Use direct SQL query with parameters to avoid type conversion issues
+          const insertCarGroupRateQuery = `
+            INSERT INTO car_group_rates (
+              rental_rate_id, vehicle_group_id, miles_per_day, miles_rate,
+              deposit_rate_cdw, policy_value_cdw, deposit_rate_pai, policy_value_pai,
+              deposit_rate_scdw, policy_value_scdw, deposit_rate_cpp, policy_value_cpp,
+              delivery_charges, rate_type, included
+            ) VALUES (
+              $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15
+            )
+            RETURNING id
+          `
 
-        // Insert rates based on type
-        if (carGroup.ratePackage.type === "daily" && carGroup.ratePackage.dailyRates) {
-          // Insert daily rates
-          for (let i = 0; i < carGroup.ratePackage.dailyRates.length; i++) {
+          const params = [
+            rentalRateId,
+            carGroup.groupId, // Pass the groupId as-is without conversion
+            carGroup.milesPerDay,
+            carGroup.milesRate,
+            carGroup.depositRateCDW,
+            carGroup.policyValueCDW,
+            carGroup.depositRatePAI,
+            carGroup.policyValuePAI,
+            carGroup.depositRateSCDW,
+            carGroup.policyValueSCDW,
+            carGroup.depositRateCPP,
+            carGroup.policyValueCPP,
+            carGroup.deliveryCharges,
+            carGroup.ratePackage.type,
+            carGroup.included,
+          ]
+
+          console.log("SQL parameters for car group rate:", params)
+
+          // Execute the query and check the result
+          const carGroupRateResult = await sql.unsafe(insertCarGroupRateQuery, params)
+          console.log("Car group rate result:", carGroupRateResult)
+
+          // Check if we have a valid result with an ID
+          if (!carGroupRateResult || !carGroupRateResult[0] || !carGroupRateResult[0].id) {
+            console.error("Failed to get car group rate ID from result:", carGroupRateResult)
+            throw new Error("Failed to insert car group rate: No ID returned")
+          }
+
+          const carGroupRateId = carGroupRateResult[0].id
+          console.log("Created car group rate with ID:", carGroupRateId)
+
+          // Insert rates based on type
+          if (carGroup.ratePackage.type === "daily" && carGroup.ratePackage.dailyRates) {
+            console.log("Processing daily rates")
+            // Insert daily rates
+            for (let i = 0; i < carGroup.ratePackage.dailyRates.length; i++) {
+              await sql`
+                INSERT INTO daily_rates (car_group_rate_id, day_number, rate_amount)
+                VALUES (${carGroupRateId}, ${i + 1}, ${carGroup.ratePackage.dailyRates[i]})
+              `
+            }
+          } else if (carGroup.ratePackage.type === "weekly" && carGroup.ratePackage.weeklyRate) {
+            console.log("Processing weekly rate")
+            // Insert weekly rate
             await sql`
-              INSERT INTO daily_rates (car_group_rate_id, day_number, rate_amount)
-              VALUES (${carGroupRateId}, ${i + 1}, ${carGroup.ratePackage.dailyRates[i]})
+              INSERT INTO other_rates (car_group_rate_id, rate_type, rate_amount)
+              VALUES (${carGroupRateId}, 'weekly', ${carGroup.ratePackage.weeklyRate})
+            `
+          } else if (carGroup.ratePackage.type === "monthly" && carGroup.ratePackage.monthlyRate) {
+            console.log("Processing monthly rate")
+            // Insert monthly rate
+            await sql`
+              INSERT INTO other_rates (car_group_rate_id, rate_type, rate_amount)
+              VALUES (${carGroupRateId}, 'monthly', ${carGroup.ratePackage.monthlyRate})
+            `
+          } else if (carGroup.ratePackage.type === "yearly" && carGroup.ratePackage.yearlyRate) {
+            console.log("Processing yearly rate")
+            // Insert yearly rate
+            await sql`
+              INSERT INTO other_rates (car_group_rate_id, rate_type, rate_amount)
+              VALUES (${carGroupRateId}, 'yearly', ${carGroup.ratePackage.yearlyRate})
             `
           }
-        } else if (carGroup.ratePackage.type === "weekly" && carGroup.ratePackage.weeklyRate) {
-          // Insert weekly rate
-          await sql`
-            INSERT INTO other_rates (car_group_rate_id, rate_type, rate_amount)
-            VALUES (${carGroupRateId}, 'weekly', ${carGroup.ratePackage.weeklyRate})
-          `
-        } else if (carGroup.ratePackage.type === "monthly" && carGroup.ratePackage.monthlyRate) {
-          // Insert monthly rate
-          await sql`
-            INSERT INTO other_rates (car_group_rate_id, rate_type, rate_amount)
-            VALUES (${carGroupRateId}, 'monthly', ${carGroup.ratePackage.monthlyRate})
-          `
-        } else if (carGroup.ratePackage.type === "yearly" && carGroup.ratePackage.yearlyRate) {
-          // Insert yearly rate
-          await sql`
-            INSERT INTO other_rates (car_group_rate_id, rate_type, rate_amount)
-            VALUES (${carGroupRateId}, 'yearly', ${carGroup.ratePackage.yearlyRate})
-          `
+        } catch (error) {
+          console.error("Error inserting car group rate:", error)
+          throw new Error(`Error inserting car group rate: ${error instanceof Error ? error.message : String(error)}`)
         }
       }
     }
@@ -396,23 +461,54 @@ export async function createRentalRate(formData: FormData) {
     // Process additional options
     const additionalOptionsJson = formData.get("additionalOptions") as string
     if (additionalOptionsJson) {
+      console.log("Additional options JSON:", additionalOptionsJson)
       const additionalOptions = JSON.parse(additionalOptionsJson) as AdditionalOption[]
+      console.log("Parsed additional options:", additionalOptions)
 
       // Only process included options
       const includedOptions = additionalOptions.filter((option) => option.included)
+      console.log("Included additional options:", includedOptions)
 
       for (const option of includedOptions) {
-        await sql`
-          INSERT INTO rate_additional_options (rental_rate_id, additional_option_id, included, customer_pays)
-          VALUES (${rentalRateId}, ${Number.parseInt(option.id, 10) || 0}, ${option.included}, ${option.customerPays})
-        `
+        console.log("Processing additional option:", option)
+        console.log("Option ID (before processing):", option.id, "Type:", typeof option.id)
+
+        try {
+          // Use raw SQL query to avoid type conversion issues
+          const insertOptionQuery = `
+            INSERT INTO rate_additional_options (rental_rate_id, additional_option_id, included, customer_pays)
+            VALUES ($1, $2, $3, $4)
+          `
+
+          const params = [
+            rentalRateId,
+            option.id, // Pass the id as-is without conversion
+            option.included,
+            option.customerPays,
+          ]
+
+          console.log("SQL parameters for additional option:", params)
+
+          await sql.unsafe(insertOptionQuery, params)
+          console.log("Added additional option successfully")
+        } catch (error) {
+          console.error("Error inserting additional option:", error)
+          throw new Error(
+            `Error inserting additional option: ${error instanceof Error ? error.message : String(error)}`,
+          )
+        }
       }
     }
 
     revalidatePath("/admin/rate-and-policies/rental-rates")
+    console.log("Rental rate creation completed successfully")
     return { success: true, message: `Rate "${validatedData.rateName}" created successfully` }
   } catch (error) {
     console.error("Error creating rental rate:", error)
+    if (error instanceof Error) {
+      console.error("Error message:", error.message)
+      console.error("Error stack:", error.stack)
+    }
     return { error: "Failed to create rental rate: " + (error instanceof Error ? error.message : String(error)) }
   }
 }
@@ -420,6 +516,8 @@ export async function createRentalRate(formData: FormData) {
 // Update an existing rental rate
 export async function updateRentalRate(id: string, formData: FormData) {
   try {
+    console.log("Starting rental rate update process for ID:", id)
+
     // Extract and validate basic rate information
     const rateName = formData.get("rateName") as string
     const pickupStartDate = formData.get("pickupStartDate") as string
@@ -428,6 +526,16 @@ export async function updateRentalRate(id: string, formData: FormData) {
     const bookingStartDate = formData.get("bookingStartDate") as string
     const bookingEndDate = formData.get("bookingEndDate") as string
     const active = formData.get("active") === "true"
+
+    console.log("Basic rate information for update:", {
+      rateName,
+      pickupStartDate,
+      pickupEndDate,
+      rateZone,
+      bookingStartDate,
+      bookingEndDate,
+      active,
+    })
 
     // Validate using zod
     const validatedData = rentalRateSchema.parse({
@@ -446,6 +554,8 @@ export async function updateRentalRate(id: string, formData: FormData) {
       SELECT id FROM zones WHERE code = ${validatedData.rateZone}
     `
 
+    console.log("Zone result for update:", zoneResult)
+
     if (zoneResult.length > 0) {
       rateZoneId = zoneResult[0].id
     } else {
@@ -453,6 +563,8 @@ export async function updateRentalRate(id: string, formData: FormData) {
       const rateZoneResult = await sql`
         SELECT id FROM rate_zones WHERE code = ${validatedData.rateZone}
       `
+
+      console.log("Rate zone result for update:", rateZoneResult)
 
       if (rateZoneResult.length === 0) {
         // If not found in either table, create a new entry in rate_zones
@@ -462,8 +574,10 @@ export async function updateRentalRate(id: string, formData: FormData) {
           RETURNING id
         `
         rateZoneId = newRateZone[0].id
+        console.log("Created new rate zone with ID for update:", rateZoneId)
       } else {
         rateZoneId = rateZoneResult[0].id
+        console.log("Found existing rate zone with ID for update:", rateZoneId)
       }
     }
 
@@ -482,9 +596,12 @@ export async function updateRentalRate(id: string, formData: FormData) {
       WHERE id = ${id}
     `
 
+    console.log("Updated rental rate basic information")
+
     // Process car group rates
     const carGroupRatesJson = formData.get("carGroupRates") as string
     if (carGroupRatesJson) {
+      console.log("Car group rates JSON for update:", carGroupRatesJson)
       const carGroupRates = JSON.parse(carGroupRatesJson) as CarGroupRate[]
 
       // Delete existing car group rates
@@ -492,56 +609,98 @@ export async function updateRentalRate(id: string, formData: FormData) {
         DELETE FROM car_group_rates
         WHERE rental_rate_id = ${id}
       `
+      console.log("Deleted existing car group rates")
 
       // Only process included car groups
       const includedCarGroups = carGroupRates.filter((group) => group.included)
+      console.log("Included car groups for update:", includedCarGroups)
 
       for (const carGroup of includedCarGroups) {
-        // Insert car group rate
-        const carGroupRateResult = await sql`
-          INSERT INTO car_group_rates (
-            rental_rate_id, vehicle_group_id, miles_per_day, miles_rate,
-            deposit_rate_cdw, policy_value_cdw, deposit_rate_pai, policy_value_pai,
-            deposit_rate_scdw, policy_value_scdw, deposit_rate_cpp, policy_value_cpp,
-            delivery_charges, rate_type, included
-          ) VALUES (
-            ${id}, ${Number.parseInt(carGroup.groupId, 10) || 0}, ${carGroup.milesPerDay}, ${carGroup.milesRate},
-            ${carGroup.depositRateCDW}, ${carGroup.policyValueCDW}, ${carGroup.depositRatePAI}, ${carGroup.policyValuePAI},
-            ${carGroup.depositRateSCDW}, ${carGroup.policyValueSCDW}, ${carGroup.depositRateCPP}, ${carGroup.policyValueCPP},
-            ${carGroup.deliveryCharges}, ${carGroup.ratePackage.type}, ${carGroup.included}
-          )
-          RETURNING id
-        `
+        console.log("Processing car group for update:", carGroup)
+        console.log("Group ID (before processing):", carGroup.groupId, "Type:", typeof carGroup.groupId)
 
-        const carGroupRateId = carGroupRateResult[0].id
+        try {
+          // Use raw SQL query to avoid type conversion issues
+          const insertCarGroupRateQuery = `
+            INSERT INTO car_group_rates (
+              rental_rate_id, vehicle_group_id, miles_per_day, miles_rate,
+              deposit_rate_cdw, policy_value_cdw, deposit_rate_pai, policy_value_pai,
+              deposit_rate_scdw, policy_value_scdw, deposit_rate_cpp, policy_value_cpp,
+              delivery_charges, rate_type, included
+            ) VALUES (
+              $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15
+            )
+            RETURNING id
+          `
 
-        // Insert rates based on type
-        if (carGroup.ratePackage.type === "daily" && carGroup.ratePackage.dailyRates) {
-          // Insert daily rates
-          for (let i = 0; i < carGroup.ratePackage.dailyRates.length; i++) {
+          const params = [
+            id,
+            carGroup.groupId, // Pass the groupId as-is without conversion
+            carGroup.milesPerDay,
+            carGroup.milesRate,
+            carGroup.depositRateCDW,
+            carGroup.policyValueCDW,
+            carGroup.depositRatePAI,
+            carGroup.policyValuePAI,
+            carGroup.depositRateSCDW,
+            carGroup.policyValueSCDW,
+            carGroup.depositRateCPP,
+            carGroup.policyValueCPP,
+            carGroup.deliveryCharges,
+            carGroup.ratePackage.type,
+            carGroup.included,
+          ]
+
+          console.log("SQL parameters for car group rate update:", params)
+
+          // Execute the query and check the result
+          const carGroupRateResult = await sql.unsafe(insertCarGroupRateQuery, params)
+          console.log("Car group rate result for update:", carGroupRateResult)
+
+          // Check if we have a valid result with an ID
+          if (!carGroupRateResult || !carGroupRateResult[0] || !carGroupRateResult[0].id) {
+            console.error("Failed to get car group rate ID from result for update:", carGroupRateResult)
+            throw new Error("Failed to insert car group rate: No ID returned")
+          }
+
+          const carGroupRateId = carGroupRateResult[0].id
+          console.log("Created car group rate with ID for update:", carGroupRateId)
+
+          // Insert rates based on type
+          if (carGroup.ratePackage.type === "daily" && carGroup.ratePackage.dailyRates) {
+            console.log("Processing daily rates for update")
+            // Insert daily rates
+            for (let i = 0; i < carGroup.ratePackage.dailyRates.length; i++) {
+              await sql`
+                INSERT INTO daily_rates (car_group_rate_id, day_number, rate_amount)
+                VALUES (${carGroupRateId}, ${i + 1}, ${carGroup.ratePackage.dailyRates[i]})
+              `
+            }
+          } else if (carGroup.ratePackage.type === "weekly" && carGroup.ratePackage.weeklyRate) {
+            console.log("Processing weekly rate for update")
+            // Insert weekly rate
             await sql`
-              INSERT INTO daily_rates (car_group_rate_id, day_number, rate_amount)
-              VALUES (${carGroupRateId}, ${i + 1}, ${carGroup.ratePackage.dailyRates[i]})
+              INSERT INTO other_rates (car_group_rate_id, rate_type, rate_amount)
+              VALUES (${carGroupRateId}, 'weekly', ${carGroup.ratePackage.weeklyRate})
+            `
+          } else if (carGroup.ratePackage.type === "monthly" && carGroup.ratePackage.monthlyRate) {
+            console.log("Processing monthly rate for update")
+            // Insert monthly rate
+            await sql`
+              INSERT INTO other_rates (car_group_rate_id, rate_type, rate_amount)
+              VALUES (${carGroupRateId}, 'monthly', ${carGroup.ratePackage.monthlyRate})
+            `
+          } else if (carGroup.ratePackage.type === "yearly" && carGroup.ratePackage.yearlyRate) {
+            console.log("Processing yearly rate for update")
+            // Insert yearly rate
+            await sql`
+              INSERT INTO other_rates (car_group_rate_id, rate_type, rate_amount)
+              VALUES (${carGroupRateId}, 'yearly', ${carGroup.ratePackage.yearlyRate})
             `
           }
-        } else if (carGroup.ratePackage.type === "weekly" && carGroup.ratePackage.weeklyRate) {
-          // Insert weekly rate
-          await sql`
-            INSERT INTO other_rates (car_group_rate_id, rate_type, rate_amount)
-            VALUES (${carGroupRateId}, 'weekly', ${carGroup.ratePackage.weeklyRate})
-          `
-        } else if (carGroup.ratePackage.type === "monthly" && carGroup.ratePackage.monthlyRate) {
-          // Insert monthly rate
-          await sql`
-            INSERT INTO other_rates (car_group_rate_id, rate_type, rate_amount)
-            VALUES (${carGroupRateId}, 'monthly', ${carGroup.ratePackage.monthlyRate})
-          `
-        } else if (carGroup.ratePackage.type === "yearly" && carGroup.ratePackage.yearlyRate) {
-          // Insert yearly rate
-          await sql`
-            INSERT INTO other_rates (car_group_rate_id, rate_type, rate_amount)
-            VALUES (${carGroupRateId}, 'yearly', ${carGroup.ratePackage.yearlyRate})
-          `
+        } catch (error) {
+          console.error("Error inserting car group rate for update:", error)
+          throw new Error(`Error inserting car group rate: ${error instanceof Error ? error.message : String(error)}`)
         }
       }
     }
@@ -549,6 +708,7 @@ export async function updateRentalRate(id: string, formData: FormData) {
     // Process additional options
     const additionalOptionsJson = formData.get("additionalOptions") as string
     if (additionalOptionsJson) {
+      console.log("Additional options JSON for update:", additionalOptionsJson)
       const additionalOptions = JSON.parse(additionalOptionsJson) as AdditionalOption[]
 
       // Delete existing additional options
@@ -556,24 +716,54 @@ export async function updateRentalRate(id: string, formData: FormData) {
         DELETE FROM rate_additional_options
         WHERE rental_rate_id = ${id}
       `
+      console.log("Deleted existing additional options")
 
       // Only process included options
       const includedOptions = additionalOptions.filter((option) => option.included)
+      console.log("Included additional options for update:", includedOptions)
 
       for (const option of includedOptions) {
-        await sql`
-          INSERT INTO rate_additional_options (rental_rate_id, additional_option_id, included, customer_pays)
-          VALUES (${id}, ${Number.parseInt(option.id, 10) || 0}, ${option.included}, ${option.customerPays})
-        `
+        console.log("Processing additional option for update:", option)
+        console.log("Option ID (before processing):", option.id, "Type:", typeof option.id)
+
+        try {
+          // Use raw SQL query to avoid type conversion issues
+          const insertOptionQuery = `
+            INSERT INTO rate_additional_options (rental_rate_id, additional_option_id, included, customer_pays)
+            VALUES ($1, $2, $3, $4)
+          `
+
+          const params = [
+            id,
+            option.id, // Pass the id as-is without conversion
+            option.included,
+            option.customerPays,
+          ]
+
+          console.log("SQL parameters for additional option update:", params)
+
+          await sql.unsafe(insertOptionQuery, params)
+          console.log("Added additional option successfully for update")
+        } catch (error) {
+          console.error("Error inserting additional option for update:", error)
+          throw new Error(
+            `Error inserting additional option: ${error instanceof Error ? error.message : String(error)}`,
+          )
+        }
       }
     }
 
     revalidatePath("/admin/rate-and-policies/rental-rates")
     revalidatePath(`/admin/rate-and-policies/rental-rates/${id}/edit`)
     revalidatePath(`/admin/rate-and-policies/rental-rates/${id}/view`)
+    console.log("Rental rate update completed successfully")
     return { success: true, message: `Rate "${validatedData.rateName}" updated successfully` }
   } catch (error) {
     console.error("Error updating rental rate:", error)
+    if (error instanceof Error) {
+      console.error("Error message:", error.message)
+      console.error("Error stack:", error.stack)
+    }
     return { error: "Failed to update rental rate: " + (error instanceof Error ? error.message : String(error)) }
   }
 }
@@ -670,51 +860,79 @@ export async function duplicateRentalRate(id: string) {
     // Duplicate car group rates
     for (const carGroup of rate.carGroupRates) {
       if (carGroup.included) {
-        // Insert car group rate
-        const carGroupRateResult = await sql`
-          INSERT INTO car_group_rates (
-            rental_rate_id, vehicle_group_id, miles_per_day, miles_rate,
-            deposit_rate_cdw, policy_value_cdw, deposit_rate_pai, policy_value_pai,
-            deposit_rate_scdw, policy_value_scdw, deposit_rate_cpp, policy_value_cpp,
-            delivery_charges, rate_type, included
-          ) VALUES (
-            ${newRentalRateId}, ${Number.parseInt(carGroup.groupId, 10) || 0}, ${carGroup.milesPerDay}, ${carGroup.milesRate},
-            ${carGroup.depositRateCDW}, ${carGroup.policyValueCDW}, ${carGroup.depositRatePAI}, ${carGroup.policyValuePAI},
-            ${carGroup.depositRateSCDW}, ${carGroup.policyValueSCDW}, ${carGroup.depositRateCPP}, ${carGroup.policyValueCPP},
-            ${carGroup.deliveryCharges}, ${carGroup.ratePackage.type}, ${carGroup.included}
-          )
-          RETURNING id
-        `
+        try {
+          // Use raw SQL query to avoid type conversion issues
+          const insertCarGroupRateQuery = `
+            INSERT INTO car_group_rates (
+              rental_rate_id, vehicle_group_id, miles_per_day, miles_rate,
+              deposit_rate_cdw, policy_value_cdw, deposit_rate_pai, policy_value_pai,
+              deposit_rate_scdw, policy_value_scdw, deposit_rate_cpp, policy_value_cpp,
+              delivery_charges, rate_type, included
+            ) VALUES (
+              $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15
+            )
+            RETURNING id
+          `
 
-        const newCarGroupRateId = carGroupRateResult[0].id
+          const params = [
+            newRentalRateId,
+            carGroup.groupId, // Pass the groupId as-is without conversion
+            carGroup.milesPerDay,
+            carGroup.milesRate,
+            carGroup.depositRateCDW,
+            carGroup.policyValueCDW,
+            carGroup.depositRatePAI,
+            carGroup.policyValuePAI,
+            carGroup.depositRateSCDW,
+            carGroup.policyValueSCDW,
+            carGroup.depositRateCPP,
+            carGroup.policyValueCPP,
+            carGroup.deliveryCharges,
+            carGroup.ratePackage.type,
+            carGroup.included,
+          ]
 
-        // Duplicate rates based on type
-        if (carGroup.ratePackage.type === "daily" && carGroup.ratePackage.dailyRates) {
-          // Insert daily rates
-          for (let i = 0; i < carGroup.ratePackage.dailyRates.length; i++) {
+          const carGroupRateResult = await sql.unsafe(insertCarGroupRateQuery, params)
+
+          // Check if we have a valid result with an ID
+          if (!carGroupRateResult || !carGroupRateResult[0] || !carGroupRateResult[0].id) {
+            console.error("Failed to get car group rate ID from result for duplication:", carGroupRateResult)
+            throw new Error("Failed to insert car group rate: No ID returned")
+          }
+
+          const newCarGroupRateId = carGroupRateResult[0].id
+
+          // Duplicate rates based on type
+          if (carGroup.ratePackage.type === "daily" && carGroup.ratePackage.dailyRates) {
+            // Insert daily rates
+            for (let i = 0; i < carGroup.ratePackage.dailyRates.length; i++) {
+              await sql`
+                INSERT INTO daily_rates (car_group_rate_id, day_number, rate_amount)
+                VALUES (${newCarGroupRateId}, ${i + 1}, ${carGroup.ratePackage.dailyRates[i]})
+              `
+            }
+          } else if (carGroup.ratePackage.type === "weekly" && carGroup.ratePackage.weeklyRate) {
+            // Insert weekly rate
             await sql`
-              INSERT INTO daily_rates (car_group_rate_id, day_number, rate_amount)
-              VALUES (${newCarGroupRateId}, ${i + 1}, ${carGroup.ratePackage.dailyRates[i]})
+              INSERT INTO other_rates (car_group_rate_id, rate_type, rate_amount)
+              VALUES (${newCarGroupRateId}, 'weekly', ${carGroup.ratePackage.weeklyRate})
+            `
+          } else if (carGroup.ratePackage.type === "monthly" && carGroup.ratePackage.monthlyRate) {
+            // Insert monthly rate
+            await sql`
+              INSERT INTO other_rates (car_group_rate_id, rate_type, rate_amount)
+              VALUES (${newCarGroupRateId}, 'monthly', ${carGroup.ratePackage.monthlyRate})
+            `
+          } else if (carGroup.ratePackage.type === "yearly" && carGroup.ratePackage.yearlyRate) {
+            // Insert yearly rate
+            await sql`
+              INSERT INTO other_rates (car_group_rate_id, rate_type, rate_amount)
+              VALUES (${newCarGroupRateId}, 'yearly', ${carGroup.ratePackage.yearlyRate})
             `
           }
-        } else if (carGroup.ratePackage.type === "weekly" && carGroup.ratePackage.weeklyRate) {
-          // Insert weekly rate
-          await sql`
-            INSERT INTO other_rates (car_group_rate_id, rate_type, rate_amount)
-            VALUES (${newCarGroupRateId}, 'weekly', ${carGroup.ratePackage.weeklyRate})
-          `
-        } else if (carGroup.ratePackage.type === "monthly" && carGroup.ratePackage.monthlyRate) {
-          // Insert monthly rate
-          await sql`
-            INSERT INTO other_rates (car_group_rate_id, rate_type, rate_amount)
-            VALUES (${newCarGroupRateId}, 'monthly', ${carGroup.ratePackage.monthlyRate})
-          `
-        } else if (carGroup.ratePackage.type === "yearly" && carGroup.ratePackage.yearlyRate) {
-          // Insert yearly rate
-          await sql`
-            INSERT INTO other_rates (car_group_rate_id, rate_type, rate_amount)
-            VALUES (${newCarGroupRateId}, 'yearly', ${carGroup.ratePackage.yearlyRate})
-          `
+        } catch (error) {
+          console.error("Error duplicating car group rate:", error)
+          throw new Error(`Error duplicating car group rate: ${error instanceof Error ? error.message : String(error)}`)
         }
       }
     }
@@ -723,10 +941,25 @@ export async function duplicateRentalRate(id: string) {
     if (rate.additionalOptions) {
       for (const option of rate.additionalOptions) {
         if (option.included) {
-          await sql`
-            INSERT INTO rate_additional_options (rental_rate_id, additional_option_id, included, customer_pays)
-            VALUES (${newRentalRateId}, ${Number.parseInt(option.id, 10) || 0}, ${option.included}, ${option.customerPays})
-          `
+          try {
+            // Use raw SQL query to avoid type conversion issues
+            const insertOptionQuery = `
+              INSERT INTO rate_additional_options (rental_rate_id, additional_option_id, included, customer_pays)
+              VALUES ($1, $2, $3, $4)
+            `
+
+            await sql.unsafe(insertOptionQuery, [
+              newRentalRateId,
+              option.id, // Pass the id as-is without conversion
+              option.included,
+              option.customerPays,
+            ])
+          } catch (error) {
+            console.error("Error duplicating additional option:", error)
+            throw new Error(
+              `Error duplicating additional option: ${error instanceof Error ? error.message : String(error)}`,
+            )
+          }
         }
       }
     }
@@ -735,7 +968,7 @@ export async function duplicateRentalRate(id: string) {
     return { success: true, message: `Rate "${newRateName}" created successfully` }
   } catch (error) {
     console.error("Error duplicating rental rate:", error)
-    return { error: "Failed to duplicate rental rate" }
+    return { error: "Failed to duplicate rental rate: " + (error instanceof Error ? error.message : String(error)) }
   }
 }
 
