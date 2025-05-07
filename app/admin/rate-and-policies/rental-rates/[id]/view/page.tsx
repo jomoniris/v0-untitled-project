@@ -1,5 +1,6 @@
 import { getRentalRateById } from "@/app/actions/rental-rate-actions"
 import { getZones } from "@/app/actions/zone-actions"
+import { getAdditionalOptions } from "@/app/actions/additional-option-actions"
 import { notFound } from "next/navigation"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -12,12 +13,18 @@ import { format } from "date-fns"
 export default async function ViewRentalRatePage({ params }: { params: { id: string } }) {
   const { id } = params
 
+  console.log("Fetching rental rate with ID:", id)
+
   // Fetch the rental rate to view
   const { rate, error } = await getRentalRateById(id)
 
   if (error || !rate) {
+    console.error("Error fetching rental rate:", error)
     notFound()
   }
+
+  console.log("Fetched rental rate:", rate)
+  console.log("Additional options from rate:", rate.additionalOptions)
 
   // Fetch zones from Zone Management to get the zone name
   const { zones } = await getZones()
@@ -25,6 +32,15 @@ export default async function ViewRentalRatePage({ params }: { params: { id: str
 
   // Get the zone name from the map
   const zoneName = zoneMap.get(rate.rateZone) || rate.rateZone
+
+  // Fetch all additional options to ensure we have complete data
+  const { options: allAdditionalOptions } = await getAdditionalOptions()
+  console.log("All additional options:", allAdditionalOptions)
+
+  // Ensure additionalOptions is always an array
+  const additionalOptions = Array.isArray(rate.additionalOptions) ? rate.additionalOptions : []
+
+  console.log("Processed additional options:", additionalOptions)
 
   return (
     <div className="container mx-auto py-10">
@@ -114,17 +130,25 @@ export default async function ViewRentalRatePage({ params }: { params: { id: str
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {rate.carGroupRates
-                    .filter((group) => group.included)
-                    .map((group) => (
-                      <TableRow key={group.groupId}>
-                        <TableCell className="font-medium">{group.groupName}</TableCell>
-                        <TableCell>{group.milesPerDay}</TableCell>
-                        <TableCell>${group.milesRate.toFixed(2)}</TableCell>
-                        <TableCell className="capitalize">{group.ratePackage.type}</TableCell>
-                        <TableCell>${group.deliveryCharges.toFixed(2)}</TableCell>
-                      </TableRow>
-                    ))}
+                  {rate.carGroupRates &&
+                    rate.carGroupRates
+                      .filter((group) => group.included)
+                      .map((group) => (
+                        <TableRow key={group.groupId}>
+                          <TableCell className="font-medium">{group.groupName}</TableCell>
+                          <TableCell>{group.milesPerDay}</TableCell>
+                          <TableCell>${group.milesRate.toFixed(2)}</TableCell>
+                          <TableCell className="capitalize">{group.ratePackage.type}</TableCell>
+                          <TableCell>${group.deliveryCharges.toFixed(2)}</TableCell>
+                        </TableRow>
+                      ))}
+                  {(!rate.carGroupRates || rate.carGroupRates.filter((group) => group.included).length === 0) && (
+                    <TableRow>
+                      <TableCell colSpan={5} className="text-center py-4 text-muted-foreground">
+                        No car groups included
+                      </TableCell>
+                    </TableRow>
+                  )}
                 </TableBody>
               </Table>
             </TabsContent>
@@ -140,16 +164,17 @@ export default async function ViewRentalRatePage({ params }: { params: { id: str
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {rate.additionalOptions
-                    .filter((option) => option.included)
-                    .map((option) => (
-                      <TableRow key={option.id}>
-                        <TableCell className="font-medium">{option.code}</TableCell>
-                        <TableCell>{option.description}</TableCell>
-                        <TableCell>{option.customerPays ? "Yes" : "No"}</TableCell>
-                      </TableRow>
-                    ))}
-                  {rate.additionalOptions.filter((option) => option.included).length === 0 && (
+                  {additionalOptions && additionalOptions.length > 0 ? (
+                    additionalOptions
+                      .filter((option) => option.included)
+                      .map((option) => (
+                        <TableRow key={option.id}>
+                          <TableCell className="font-medium">{option.code}</TableCell>
+                          <TableCell>{option.description}</TableCell>
+                          <TableCell>{option.customerPays ? "Yes" : "No"}</TableCell>
+                        </TableRow>
+                      ))
+                  ) : (
                     <TableRow>
                       <TableCell colSpan={3} className="text-center py-4 text-muted-foreground">
                         No additional options included
