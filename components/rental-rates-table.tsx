@@ -2,7 +2,7 @@
 
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Button } from "@/components/ui/button"
-import { Edit, Eye } from "lucide-react"
+import { Copy, Edit, Eye, MoreHorizontal, Power, Trash } from "lucide-react"
 import Link from "next/link"
 import { useState } from "react"
 import {
@@ -19,6 +19,14 @@ import { toast } from "@/components/ui/use-toast"
 import { useRouter } from "next/navigation"
 import { Badge } from "@/components/ui/badge"
 import { deleteRentalRate, duplicateRentalRate, toggleRentalRateStatus } from "@/app/actions/rental-rate-actions"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 
 interface RentalRate {
   id: string
@@ -220,6 +228,33 @@ export function RentalRatesTable({ rates = [] }: RentalRatesTableProps) {
                           <Edit className="h-4 w-4" />
                         </Link>
                       </Button>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="outline" size="icon">
+                            <MoreHorizontal className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem onClick={() => handleToggleRateStatus(rate.id)}>
+                            <Power className="mr-2 h-4 w-4" />
+                            {rate.active ? "Deactivate" : "Activate"}
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleDuplicateRate(rate)}>
+                            <Copy className="mr-2 h-4 w-4" />
+                            Duplicate
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem
+                            onClick={() => openDeleteDialog(rate)}
+                            className="text-red-600 focus:text-red-600"
+                          >
+                            <Trash className="mr-2 h-4 w-4" />
+                            Delete
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </div>
                   </TableCell>
                 </TableRow>

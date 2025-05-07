@@ -16,15 +16,18 @@ export async function GET(request: Request) {
         rr.rate_name as "rateName", 
         rr.pickup_start_date as "pickupStartDate", 
         rr.pickup_end_date as "pickupEndDate", 
-        rz.code as "rateZone", 
+        COALESCE(rz.code, z.code) as "rateZone", 
         rr.rate_zone_id as "rateZoneId",
         rr.booking_start_date as "bookingStartDate", 
         rr.booking_end_date as "bookingEndDate", 
-        rr.active
+        rr.active,
+        rr.created_at as "createdAt"
       FROM 
         rental_rates rr
       LEFT JOIN 
         rate_zones rz ON rr.rate_zone_id = rz.id
+      LEFT JOIN
+        zones z ON rz.code = z.code
     `
 
     if (filter === "active") {
@@ -39,7 +42,7 @@ export async function GET(request: Request) {
     const rates = await sql.unsafe(query)
     console.log("Query result count:", rates.length)
 
-    // Simplify the response for now to debug the issue
+    // Return the full rates data
     return NextResponse.json({ rates })
   } catch (error) {
     console.error("Error fetching rental rates:", error)
