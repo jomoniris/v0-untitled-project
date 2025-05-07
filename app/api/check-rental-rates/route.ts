@@ -3,9 +3,7 @@ import { NextResponse } from "next/server"
 
 export async function GET() {
   try {
-    console.log("Checking rental rates directly in database")
-
-    // Check if table exists
+    // Check if the table exists
     const tableCheck = await sql`
       SELECT EXISTS (
         SELECT FROM information_schema.tables 
@@ -15,64 +13,47 @@ export async function GET() {
     `
 
     const tableExists = tableCheck[0]?.exists
-    console.log("Table exists:", tableExists)
 
     if (!tableExists) {
       return NextResponse.json({
-        error: "rental_rates table does not exist",
+        status: "error",
+        message: "rental_rates table does not exist",
         tableExists: false,
         count: 0,
-        rates: [],
+        columns: [],
+        sample: [],
       })
     }
 
-    // Count records
-    const countResult = await sql`SELECT COUNT(*) FROM rental_rates;`
-    const count = Number.parseInt(countResult[0]?.count || "0")
-    console.log("Total rental rates in database:", count)
-
-    // Get sample records
-    let rates = []
-    if (count > 0) {
-      rates = await sql`
-        SELECT * FROM rental_rates 
-        ORDER BY created_at DESC 
-        LIMIT 5;
-      `
-      console.log("Sample rates:", rates)
-    }
-
-    // Check rate_zones table
-    const rateZonesCheck = await sql`
-      SELECT EXISTS (
-        SELECT FROM information_schema.tables 
-        WHERE table_schema = 'public' 
-        AND table_name = 'rate_zones'
-      );
+    // Get column information
+    const columnInfo = await sql`
+      SELECT column_name, data_type 
+      FROM information_schema.columns 
+      WHERE table_schema = 'public' 
+      AND table_name = 'rental_rates';
     `
 
-    const rateZonesExist = rateZonesCheck[0]?.exists
-    console.log("rate_zones table exists:", rateZonesExist)
+    // Count records
+    const countResult = await sql`SELECT COUNT(*) FROM rental_rates;`
+    const count = countResult[0]?.count || 0
 
-    let rateZones = []
-    if (rateZonesExist) {
-      rateZones = await sql`SELECT * FROM rate_zones LIMIT 5;`
-      console.log("Sample rate zones:", rateZones)
-    }
+    // Get a sample of records
+    const sample = count > 0 ? await sql`SELECT * FROM rental_rates LIMIT 5;` : []
 
     return NextResponse.json({
-      tableExists,
+      status: "success",
+      tableExists: true,
       count,
-      sampleRates: rates,
-      rateZonesExist,
-      sampleRateZones: rateZones,
+      columns: columnInfo,
+      sample,
     })
   } catch (error) {
     console.error("Error checking rental rates:", error)
     return NextResponse.json(
       {
-        error: "Failed to check rental rates",
-        details: String(error),
+        status: "error",
+        message: String(error),
+        error: error,
       },
       { status: 500 },
     )
