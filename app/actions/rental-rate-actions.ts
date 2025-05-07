@@ -305,33 +305,61 @@ export async function createRentalRate(formData: FormData) {
 
     console.log("Validated data:", validatedData)
 
-    // FIX 1: Improved rate_zone handling
-    // First check if the rate zone already exists
+    // FIX: Improved rate_zone handling to handle both UUID and integer IDs
     let rateZoneId
 
-    // Try to get from rate_zones table first
+    // First check if the rate zone exists in rate_zones table
     const rateZoneResult = await sql`
       SELECT id FROM rate_zones WHERE code = ${validatedData.rateZone}
     `
-
     console.log("Rate zone result:", rateZoneResult)
 
     if (rateZoneResult.length > 0) {
+      // Use the ID from rate_zones table
       rateZoneId = rateZoneResult[0].id
       console.log("Found existing rate zone with ID:", rateZoneId)
     } else {
-      // If not found, try the zones table
+      // If not found in rate_zones, check zones table
       const zoneResult = await sql`
         SELECT id FROM zones WHERE code = ${validatedData.rateZone}
       `
-
       console.log("Zone result:", zoneResult)
 
       if (zoneResult.length > 0) {
-        rateZoneId = zoneResult[0].id
-        console.log("Found existing zone with ID:", rateZoneId)
+        // Found in zones table, now we need to create a corresponding entry in rate_zones
+        const zoneId = zoneResult[0].id
+        console.log("Found existing zone with ID:", zoneId)
+
+        // Get zone details to create rate_zone entry
+        const zoneDetails = await sql`
+          SELECT code, description FROM zones WHERE id = ${zoneId}
+        `
+
+        if (zoneDetails.length > 0) {
+          // Create a new entry in rate_zones
+          const newRateZone = await sql`
+            INSERT INTO rate_zones (code, name, description)
+            VALUES (
+              ${zoneDetails[0].code}, 
+              ${zoneDetails[0].description || zoneDetails[0].code}, 
+              ${zoneDetails[0].description || ""}
+            )
+            RETURNING id
+          `
+          rateZoneId = newRateZone[0].id
+          console.log("Created new rate zone with ID:", rateZoneId)
+        } else {
+          // Fallback: create minimal rate_zone entry
+          const newRateZone = await sql`
+            INSERT INTO rate_zones (code, name, description)
+            VALUES (${validatedData.rateZone}, ${validatedData.rateZone}, ${validatedData.rateZone})
+            RETURNING id
+          `
+          rateZoneId = newRateZone[0].id
+          console.log("Created fallback rate zone with ID:", rateZoneId)
+        }
       } else {
-        // If not found in either table, create a new entry in rate_zones
+        // Not found in either table, create a new entry in rate_zones
         const newRateZone = await sql`
           INSERT INTO rate_zones (code, name, description)
           VALUES (${validatedData.rateZone}, ${validatedData.rateZone}, ${validatedData.rateZone})
@@ -537,33 +565,61 @@ export async function updateRentalRate(id: string, formData: FormData) {
       active,
     })
 
-    // FIX 1: Improved rate_zone handling for updates
-    // First check if the rate zone already exists
+    // FIX: Improved rate_zone handling to handle both UUID and integer IDs
     let rateZoneId
 
-    // Try to get from rate_zones table first
+    // First check if the rate zone exists in rate_zones table
     const rateZoneResult = await sql`
       SELECT id FROM rate_zones WHERE code = ${validatedData.rateZone}
     `
-
     console.log("Rate zone result for update:", rateZoneResult)
 
     if (rateZoneResult.length > 0) {
+      // Use the ID from rate_zones table
       rateZoneId = rateZoneResult[0].id
       console.log("Found existing rate zone with ID for update:", rateZoneId)
     } else {
-      // If not found, try the zones table
+      // If not found in rate_zones, check zones table
       const zoneResult = await sql`
         SELECT id FROM zones WHERE code = ${validatedData.rateZone}
       `
-
       console.log("Zone result for update:", zoneResult)
 
       if (zoneResult.length > 0) {
-        rateZoneId = zoneResult[0].id
-        console.log("Found existing zone with ID for update:", rateZoneId)
+        // Found in zones table, now we need to create a corresponding entry in rate_zones
+        const zoneId = zoneResult[0].id
+        console.log("Found existing zone with ID for update:", zoneId)
+
+        // Get zone details to create rate_zone entry
+        const zoneDetails = await sql`
+          SELECT code, description FROM zones WHERE id = ${zoneId}
+        `
+
+        if (zoneDetails.length > 0) {
+          // Create a new entry in rate_zones
+          const newRateZone = await sql`
+            INSERT INTO rate_zones (code, name, description)
+            VALUES (
+              ${zoneDetails[0].code}, 
+              ${zoneDetails[0].description || zoneDetails[0].code}, 
+              ${zoneDetails[0].description || ""}
+            )
+            RETURNING id
+          `
+          rateZoneId = newRateZone[0].id
+          console.log("Created new rate zone with ID for update:", rateZoneId)
+        } else {
+          // Fallback: create minimal rate_zone entry
+          const newRateZone = await sql`
+            INSERT INTO rate_zones (code, name, description)
+            VALUES (${validatedData.rateZone}, ${validatedData.rateZone}, ${validatedData.rateZone})
+            RETURNING id
+          `
+          rateZoneId = newRateZone[0].id
+          console.log("Created fallback rate zone with ID for update:", rateZoneId)
+        }
       } else {
-        // If not found in either table, create a new entry in rate_zones
+        // Not found in either table, create a new entry in rate_zones
         const newRateZone = await sql`
           INSERT INTO rate_zones (code, name, description)
           VALUES (${validatedData.rateZone}, ${validatedData.rateZone}, ${validatedData.rateZone})
