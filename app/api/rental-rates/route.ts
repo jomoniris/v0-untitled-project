@@ -7,6 +7,34 @@ export async function GET(request: Request) {
     const filter = searchParams.get("filter") || "all"
 
     console.log("Fetching rental rates with filter:", filter)
+    console.log("Request URL:", request.url)
+
+    // First, check if the rental_rates table exists
+    try {
+      const tableCheck = await sql`
+        SELECT EXISTS (
+          SELECT FROM information_schema.tables 
+          WHERE table_schema = 'public' 
+          AND table_name = 'rental_rates'
+        );
+      `
+      console.log("Table check result:", tableCheck)
+
+      if (!tableCheck[0]?.exists) {
+        console.error("rental_rates table does not exist!")
+        return NextResponse.json({ error: "rental_rates table does not exist", rates: [] }, { status: 500 })
+      }
+    } catch (tableError) {
+      console.error("Error checking table existence:", tableError)
+    }
+
+    // Count total records in the table
+    try {
+      const countResult = await sql`SELECT COUNT(*) FROM rental_rates;`
+      console.log("Total rental rates in database:", countResult[0]?.count)
+    } catch (countError) {
+      console.error("Error counting records:", countError)
+    }
 
     // First, get the basic rental rates data
     let query = `
@@ -39,8 +67,25 @@ export async function GET(request: Request) {
     query += ` ORDER BY rr.created_at DESC`
 
     console.log("Executing query:", query)
+
+    // Try a simpler query first to check if we can get any data
+    try {
+      const simpleRates = await sql`SELECT * FROM rental_rates LIMIT 10;`
+      console.log("Simple query result count:", simpleRates.length)
+      console.log("Simple query first record:", simpleRates[0] ? JSON.stringify(simpleRates[0]) : "No records")
+    } catch (simpleError) {
+      console.error("Error with simple query:", simpleError)
+    }
+
+    // Now try the full query
     const rates = await sql.unsafe(query)
-    console.log("Query result count:", rates.length)
+    console.log("Full query result count:", rates.length)
+
+    if (rates.length > 0) {
+      console.log("First rate:", JSON.stringify(rates[0]))
+    } else {
+      console.log("No rates found with the query")
+    }
 
     // Return the full rates data
     return NextResponse.json({ rates })
