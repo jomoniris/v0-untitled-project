@@ -48,6 +48,8 @@ const users = [
   { id: "USR-002", name: "Fleet Manager" },
   { id: "USR-003", name: "Maintenance Supervisor" },
   { id: "USR-004", name: "Operations Manager" },
+  { id: "USR-003", name: "Maintenance Supervisor" },
+  { id: "USR-004", name: "Operations Manager" },
 ]
 
 const movementReasons = [
