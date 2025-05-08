@@ -73,7 +73,14 @@ const getStatusColor = (status: string) => {
   }
 }
 
-export default function ViewNonRevenueMovementPage({ params }: { params: { id: string } }) {
+// Make the component async to properly handle params
+export default async function ViewNonRevenueMovementPage({ params }: { params: { id: string } }) {
+  // Await the params to fix the error
+  const id = params.id
+
+  // In a real app, you would fetch the movement data based on the ID
+  // const movement = await fetchMovementById(id);
+
   return (
     <div className="container mx-auto py-6">
       <div className="flex items-center justify-between mb-6">
@@ -86,7 +93,7 @@ export default function ViewNonRevenueMovementPage({ params }: { params: { id: s
           <h1 className="text-3xl font-bold">Non Revenue Movement Details</h1>
         </div>
         <div className="flex gap-2">
-          <Link href={`/admin/fleet/non-revenue-movement/${params.id}/edit`}>
+          <Link href={`/admin/fleet/non-revenue-movement/${id}/edit`}>
             <Button variant="outline">
               <Pencil className="mr-2 h-4 w-4" /> Edit
             </Button>

@@ -16,8 +16,10 @@ import { Calendar } from "@/components/ui/calendar"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { cn } from "@/lib/utils"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Separator } from "@/components/ui/separator"
+import { createNonRevenueMovement, updateNonRevenueMovement } from "@/app/actions/non-revenue-movement-actions"
+import { toast } from "@/components/ui/use-toast"
 
 // Mock data for master tables
 const workOrderTypes = [
@@ -46,8 +48,6 @@ const drivers = [
 const users = [
   { id: "USR-001", name: "Admin User" },
   { id: "USR-002", name: "Fleet Manager" },
-  { id: "USR-003", name: "Maintenance Supervisor" },
-  { id: "USR-004", name: "Operations Manager" },
   { id: "USR-003", name: "Maintenance Supervisor" },
   { id: "USR-004", name: "Operations Manager" },
 ]
@@ -168,17 +168,92 @@ interface NonRevenueMovementFormProps {
 
 export function NonRevenueMovementForm({ initialData }: NonRevenueMovementFormProps) {
   const router = useRouter()
-  const [items, setItems] = useState<any[]>(initialData?.items || [])
+  const [items, setItems] = useState<any[]>([])
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
+  // Initialize form with default values or initial data
   const form = useForm<NonRevenueMovementFormValues>({
     resolver: zodResolver(nonRevenueMovementSchema),
     defaultValues: initialData || defaultValues,
   })
 
-  function onSubmit(data: NonRevenueMovementFormValues) {
-    console.log(data)
-    // In a real app, you would save the data to your backend here
-    router.push("/admin/fleet/non-revenue-movement")
+  // Set items when initialData changes
+  useEffect(() => {
+    if (initialData?.items) {
+      setItems(initialData.items)
+    }
+  }, [initialData])
+
+  async function onSubmit(data: NonRevenueMovementFormValues) {
+    setIsSubmitting(true)
+    try {
+      // Map form data to API format
+      const formattedData = {
+        work_order_type: data.workOrderType,
+        supplier: data.supplier,
+        claim: data.claim,
+        vehicle: data.vehicle,
+        driver: data.driver,
+        movement_reason: data.movementReason,
+        created_by: data.createdBy,
+        status: data.status,
+        checkout_location: data.checkoutLocation,
+        checkin_location: data.checkinLocation,
+        checkout_datetime: data.checkoutDatetime,
+        checkout_mileage: data.checkoutMileage,
+        checkout_tank: data.checkoutTank,
+        checkin_datetime: data.checkinDatetime,
+        checkin_mileage: data.checkinMileage,
+        checkin_tank: data.checkinTank,
+        notes: data.notes,
+        items: data.items.map((item) => ({
+          supplier: item.supplier,
+          start_datetime: item.startDatetime,
+          end_datetime: item.endDatetime,
+          task: item.task,
+          parts: item.parts,
+          cost: item.cost,
+          labor_cost: item.laborCost,
+          vat: item.vat,
+          total: item.total || item.cost + item.laborCost + item.vat,
+          warranty: item.warranty,
+        })),
+      }
+
+      let result
+      if (initialData?.id) {
+        // Update existing movement
+        result = await updateNonRevenueMovement(initialData.id, formattedData)
+      } else {
+        // Create new movement
+        result = await createNonRevenueMovement(formattedData)
+      }
+
+      if (result.success) {
+        toast({
+          title: initialData ? "Movement updated" : "Movement created",
+          description: initialData
+            ? "The non-revenue movement has been updated successfully."
+            : "The non-revenue movement has been created successfully.",
+        })
+        router.push("/admin/fleet/non-revenue-movement")
+      } else {
+        toast({
+          title: "Error",
+          description: result.error || "An error occurred. Please try again.",
+          variant: "destructive",
+        })
+      }
+    } catch (error) {
+      console.error("Error submitting form:", error)
+      toast({
+        title: "Error",
+        description: "An unexpected error occurred. Please try again.",
+        variant: "destructive",
+      })
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   const addItem = () => {
@@ -220,6 +295,19 @@ export function NonRevenueMovementForm({ initialData }: NonRevenueMovementFormPr
     setItems(newItems)
     form.setValue("items", newItems)
   }
+
+  // Setup database tables when the component mounts
+  useEffect(() => {
+    const setupTables = async () => {
+      try {
+        await fetch("/api/setup-non-revenue-movements")
+      } catch (error) {
+        console.error("Error setting up tables:", error)
+      }
+    }
+
+    setupTables()
+  }, [])
 
   return (
     <Card className="shadow-sm">
@@ -266,7 +354,7 @@ export function NonRevenueMovementForm({ initialData }: NonRevenueMovementFormPr
                       <FormItem className="space-y-1">
                         <FormLabel className="text-sm font-medium">Supplier</FormLabel>
                         <FormControl className="h-9">
-                          <Input placeholder="Enter supplier name" {...field} />
+                          <Input placeholder="Enter supplier name" {...field} value={field.value || ""} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -604,7 +692,12 @@ export function NonRevenueMovementForm({ initialData }: NonRevenueMovementFormPr
                 <FormItem className="space-y-1">
                   <FormLabel className="text-sm font-medium">Notes</FormLabel>
                   <FormControl className="h-9">
-                    <Textarea placeholder="Enter any additional details..." className="resize-none h-20" {...field} />
+                    <Textarea
+                      placeholder="Enter any additional details..."
+                      className="resize-none h-20"
+                      {...field}
+                      value={field.value || ""}
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -822,7 +915,9 @@ export function NonRevenueMovementForm({ initialData }: NonRevenueMovementFormPr
             <Button type="button" variant="outline" onClick={() => router.push("/admin/fleet/non-revenue-movement")}>
               Cancel
             </Button>
-            <Button type="submit">{initialData ? "Update Movement" : "Create Movement"}</Button>
+            <Button type="submit" disabled={isSubmitting}>
+              {isSubmitting ? "Saving..." : initialData ? "Update Movement" : "Create Movement"}
+            </Button>
           </CardFooter>
         </form>
       </Form>

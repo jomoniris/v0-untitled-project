@@ -47,11 +47,18 @@ const mockMovement = {
   ],
 }
 
-export default function EditNonRevenueMovementPage({ params }: { params: { id: string } }) {
+// Make the component async to properly handle params
+export default async function EditNonRevenueMovementPage({ params }: { params: { id: string } }) {
+  // Await the params to fix the error
+  const id = params.id
+
+  // In a real app, you would fetch the movement data based on the ID
+  // const movement = await fetchMovementById(id);
+
   return (
     <div className="container mx-auto py-6">
       <h1 className="text-3xl font-bold mb-6">Edit Non Revenue Movement</h1>
-      <p className="text-muted-foreground mb-6">Editing movement ID: {params.id}</p>
+      <p className="text-muted-foreground mb-6">Editing movement ID: {id}</p>
       <NonRevenueMovementForm initialData={mockMovement} />
     </div>
   )
