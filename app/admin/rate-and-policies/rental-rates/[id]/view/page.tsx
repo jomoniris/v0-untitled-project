@@ -1,291 +1,273 @@
 import { getRentalRateById } from "@/app/actions/rental-rate-actions"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Badge } from "@/components/ui/badge"
-import Link from "next/link"
+import { Separator } from "@/components/ui/separator"
 import { notFound } from "next/navigation"
+import Link from "next/link"
+import { formatCurrency } from "@/lib/utils"
 
-interface ViewRentalRatePageProps {
-  params: {
-    id: string
-  }
+interface PageParams {
+  id: string
 }
 
-export default async function ViewRentalRatePage({ params }: ViewRentalRatePageProps) {
-  // Use the id directly from params without destructuring
-  const id = params.id
+export default async function ViewRentalRatePage({
+  params,
+}: {
+  params: PageParams
+}) {
+  try {
+    // Access the ID safely
+    const id = params?.id
 
-  console.log("Fetching rental rate for view, ID:", id)
+    if (!id) {
+      console.error("No ID provided in params")
+      notFound()
+    }
 
-  // Fetch the rental rate to view
-  const { rate, error } = await getRentalRateById(id)
+    // Fetch the rental rate to view
+    const { rate, error } = await getRentalRateById(id)
 
-  if (error || !rate) {
-    console.error("Error fetching rental rate:", error)
-    notFound()
-  }
+    if (error || !rate) {
+      console.error("Error fetching rental rate:", error)
+      notFound()
+    }
 
-  // Format dates for display
-  const formatDate = (dateString: string) => {
-    if (!dateString) return "N/A"
-    const date = new Date(dateString)
-    return date.toLocaleDateString()
-  }
+    // Format dates for display
+    const formatDate = (dateString: string | null | undefined) => {
+      if (!dateString) return "N/A"
+      return new Date(dateString).toLocaleDateString()
+    }
 
-  // Format currency
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency: "USD",
-    }).format(amount)
-  }
-
-  return (
-    <div className="container mx-auto py-10">
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-3xl font-bold">{rate.rateName}</h1>
-        <div className="flex gap-2">
-          <Button variant="outline" asChild>
-            <Link href="/admin/rate-and-policies/rental-rates">Back to Rates</Link>
-          </Button>
-          <Button asChild>
-            <Link href={`/admin/rate-and-policies/rental-rates/${id}/edit`}>Edit Rate</Link>
-          </Button>
+    return (
+      <div className="container mx-auto py-10">
+        <div className="flex justify-between items-center mb-6">
+          <h1 className="text-3xl font-bold">{rate.rateName}</h1>
+          <div className="flex gap-2">
+            <Button variant="outline" asChild>
+              <Link href="/admin/rate-and-policies/rental-rates">Back to Rates</Link>
+            </Button>
+            <Button asChild>
+              <Link href={`/admin/rate-and-policies/rental-rates/${id}/edit`}>Edit Rate</Link>
+            </Button>
+          </div>
         </div>
-      </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-lg">Rate Information</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <dl className="space-y-2">
-              <div className="flex justify-between">
-                <dt className="font-medium">Rate ID:</dt>
-                <dd>{rate.rateId}</dd>
-              </div>
-              <div className="flex justify-between">
-                <dt className="font-medium">Status:</dt>
-                <dd>
-                  <Badge variant={rate.active ? "default" : "secondary"}>{rate.active ? "Active" : "Inactive"}</Badge>
-                </dd>
-              </div>
-              <div className="flex justify-between">
-                <dt className="font-medium">Rate Zone:</dt>
-                <dd>{rate.rateZone}</dd>
-              </div>
-            </dl>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-lg">Pickup Period</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <dl className="space-y-2">
-              <div className="flex justify-between">
-                <dt className="font-medium">Start Date:</dt>
-                <dd>{formatDate(rate.pickupStartDate)}</dd>
-              </div>
-              <div className="flex justify-between">
-                <dt className="font-medium">End Date:</dt>
-                <dd>{formatDate(rate.pickupEndDate)}</dd>
-              </div>
-            </dl>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-lg">Booking Period</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <dl className="space-y-2">
-              <div className="flex justify-between">
-                <dt className="font-medium">Start Date:</dt>
-                <dd>{formatDate(rate.bookingStartDate)}</dd>
-              </div>
-              <div className="flex justify-between">
-                <dt className="font-medium">End Date:</dt>
-                <dd>{formatDate(rate.bookingEndDate)}</dd>
-              </div>
-            </dl>
-          </CardContent>
-        </Card>
-      </div>
-
-      <Tabs defaultValue="car-groups" className="w-full">
-        <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="car-groups">Car Group Rates</TabsTrigger>
-          <TabsTrigger value="additional-options">Additional Options</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="car-groups" className="space-y-4 mt-4">
-          <Card>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {/* Basic Information */}
+          <Card className="md:col-span-1">
             <CardHeader>
-              <CardTitle>Car Group Rates</CardTitle>
-              <CardDescription>Rates for each car group included in this rate</CardDescription>
+              <CardTitle>Basic Information</CardTitle>
+              <CardDescription>Rate details and validity</CardDescription>
             </CardHeader>
-            <CardContent>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Car Group</TableHead>
-                    <TableHead>Rate Type</TableHead>
-                    <TableHead>Miles/Day</TableHead>
-                    <TableHead>Miles Rate</TableHead>
-                    <TableHead>Delivery Charges</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {rate.carGroupRates
-                    .filter((group) => group.included)
-                    .map((group) => (
-                      <TableRow key={group.groupId}>
-                        <TableCell className="font-medium">{group.groupName}</TableCell>
-                        <TableCell className="capitalize">{group.ratePackage.type}</TableCell>
-                        <TableCell>{group.milesPerDay}</TableCell>
-                        <TableCell>{formatCurrency(group.milesRate)}</TableCell>
-                        <TableCell>{formatCurrency(group.deliveryCharges)}</TableCell>
-                      </TableRow>
-                    ))}
-                </TableBody>
-              </Table>
+            <CardContent className="space-y-4">
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">Rate ID</p>
+                <p>{rate.rateId}</p>
+              </div>
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">Rate Zone</p>
+                <p>{rate.rateZone}</p>
+              </div>
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">Status</p>
+                <p>
+                  <span
+                    className={`inline-block px-2 py-1 text-xs rounded-full ${
+                      rate.active ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"
+                    }`}
+                  >
+                    {rate.active ? "Active" : "Inactive"}
+                  </span>
+                </p>
+              </div>
+              <Separator />
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">Pickup Period</p>
+                <p>
+                  {formatDate(rate.pickupStartDate)} - {formatDate(rate.pickupEndDate)}
+                </p>
+              </div>
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">Booking Period</p>
+                <p>
+                  {formatDate(rate.bookingStartDate)} - {formatDate(rate.bookingEndDate)}
+                </p>
+              </div>
             </CardContent>
           </Card>
 
-          {/* Detailed rates for each car group */}
-          {rate.carGroupRates
-            .filter((group) => group.included)
-            .map((group) => (
-              <Card key={`${group.groupId}-details`}>
-                <CardHeader>
-                  <CardTitle>{group.groupName} - Detailed Rates</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div>
-                      <h3 className="text-lg font-medium mb-2">Insurance Rates</h3>
-                      <Table>
-                        <TableHeader>
-                          <TableRow>
-                            <TableHead>Insurance Type</TableHead>
-                            <TableHead>Deposit Rate</TableHead>
-                            <TableHead>Policy Value</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          <TableRow>
-                            <TableCell>CDW</TableCell>
-                            <TableCell>{formatCurrency(group.depositRateCDW)}</TableCell>
-                            <TableCell>{formatCurrency(group.policyValueCDW)}</TableCell>
-                          </TableRow>
-                          <TableRow>
-                            <TableCell>PAI</TableCell>
-                            <TableCell>{formatCurrency(group.depositRatePAI)}</TableCell>
-                            <TableCell>{formatCurrency(group.policyValuePAI)}</TableCell>
-                          </TableRow>
-                          <TableRow>
-                            <TableCell>SCDW</TableCell>
-                            <TableCell>{formatCurrency(group.depositRateSCDW)}</TableCell>
-                            <TableCell>{formatCurrency(group.policyValueSCDW)}</TableCell>
-                          </TableRow>
-                          <TableRow>
-                            <TableCell>CPP</TableCell>
-                            <TableCell>{formatCurrency(group.depositRateCPP)}</TableCell>
-                            <TableCell>{formatCurrency(group.policyValueCPP)}</TableCell>
-                          </TableRow>
-                        </TableBody>
-                      </Table>
-                    </div>
-
-                    <div>
-                      <h3 className="text-lg font-medium mb-2">Rate Package</h3>
-                      {group.ratePackage.type === "daily" && group.ratePackage.dailyRates && (
-                        <div>
-                          <h4 className="font-medium mb-2">Daily Rates</h4>
-                          <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-                            {group.ratePackage.dailyRates.slice(0, 10).map((rate, index) => (
-                              <div key={index} className="flex justify-between">
-                                <span>Day {index + 1}:</span>
-                                <span>{formatCurrency(rate)}</span>
-                              </div>
-                            ))}
-                            {group.ratePackage.dailyRates.length > 10 && (
-                              <div className="col-span-full text-center text-muted-foreground">
-                                ... and {group.ratePackage.dailyRates.length - 10} more days
-                              </div>
-                            )}
+          {/* Car Group Rates */}
+          <Card className="md:col-span-2">
+            <CardHeader>
+              <CardTitle>Car Group Rates</CardTitle>
+              <CardDescription>Rates for different car groups</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-6">
+                {rate.carGroupRates && rate.carGroupRates.length > 0 ? (
+                  rate.carGroupRates
+                    .filter((group) => group.included)
+                    .map((group) => (
+                      <div key={group.groupId} className="border rounded-md p-4">
+                        <h3 className="text-lg font-semibold mb-2">{group.groupName}</h3>
+                        <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-4">
+                          <div>
+                            <p className="text-sm font-medium text-muted-foreground">Miles Per Day</p>
+                            <p>{group.milesPerDay}</p>
+                          </div>
+                          <div>
+                            <p className="text-sm font-medium text-muted-foreground">Miles Rate</p>
+                            <p>{formatCurrency(group.milesRate)}</p>
+                          </div>
+                          <div>
+                            <p className="text-sm font-medium text-muted-foreground">Rate Type</p>
+                            <p className="capitalize">{group.ratePackage.type}</p>
                           </div>
                         </div>
-                      )}
 
-                      {group.ratePackage.type === "weekly" && (
-                        <div className="flex justify-between">
-                          <span>Weekly Rate:</span>
-                          <span>{formatCurrency(group.ratePackage.weeklyRate || 0)}</span>
+                        {/* Rate Package Details */}
+                        <div className="mt-4">
+                          <h4 className="text-sm font-medium mb-2">Rate Package</h4>
+                          {group.ratePackage.type === "daily" && group.ratePackage.dailyRates && (
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                              {group.ratePackage.dailyRates.slice(0, 7).map((rate, index) =>
+                                rate > 0 ? (
+                                  <div key={index}>
+                                    <p className="text-xs text-muted-foreground">Day {index + 1}</p>
+                                    <p>{formatCurrency(rate)}</p>
+                                  </div>
+                                ) : null,
+                              )}
+                              {group.ratePackage.dailyRates.slice(7).some((rate) => rate > 0) && (
+                                <div>
+                                  <p className="text-xs text-muted-foreground">More days...</p>
+                                </div>
+                              )}
+                            </div>
+                          )}
+
+                          {group.ratePackage.type === "weekly" && (
+                            <div>
+                              <p className="text-xs text-muted-foreground">Weekly Rate</p>
+                              <p>{formatCurrency(group.ratePackage.weeklyRate || 0)}</p>
+                            </div>
+                          )}
+
+                          {group.ratePackage.type === "monthly" && (
+                            <div>
+                              <p className="text-xs text-muted-foreground">Monthly Rate</p>
+                              <p>{formatCurrency(group.ratePackage.monthlyRate || 0)}</p>
+                            </div>
+                          )}
+
+                          {group.ratePackage.type === "yearly" && (
+                            <div>
+                              <p className="text-xs text-muted-foreground">Yearly Rate</p>
+                              <p>{formatCurrency(group.ratePackage.yearlyRate || 0)}</p>
+                            </div>
+                          )}
                         </div>
-                      )}
 
-                      {group.ratePackage.type === "monthly" && (
-                        <div className="flex justify-between">
-                          <span>Monthly Rate:</span>
-                          <span>{formatCurrency(group.ratePackage.monthlyRate || 0)}</span>
+                        {/* Insurance Rates */}
+                        <div className="mt-4">
+                          <h4 className="text-sm font-medium mb-2">Insurance Rates</h4>
+                          <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                            <div>
+                              <p className="text-xs text-muted-foreground">CDW Deposit</p>
+                              <p>{formatCurrency(group.depositRateCDW)}</p>
+                            </div>
+                            <div>
+                              <p className="text-xs text-muted-foreground">CDW Policy</p>
+                              <p>{formatCurrency(group.policyValueCDW)}</p>
+                            </div>
+                            <div>
+                              <p className="text-xs text-muted-foreground">PAI Deposit</p>
+                              <p>{formatCurrency(group.depositRatePAI)}</p>
+                            </div>
+                            <div>
+                              <p className="text-xs text-muted-foreground">PAI Policy</p>
+                              <p>{formatCurrency(group.policyValuePAI)}</p>
+                            </div>
+                            <div>
+                              <p className="text-xs text-muted-foreground">SCDW Deposit</p>
+                              <p>{formatCurrency(group.depositRateSCDW)}</p>
+                            </div>
+                            <div>
+                              <p className="text-xs text-muted-foreground">SCDW Policy</p>
+                              <p>{formatCurrency(group.policyValueSCDW)}</p>
+                            </div>
+                            <div>
+                              <p className="text-xs text-muted-foreground">CPP Deposit</p>
+                              <p>{formatCurrency(group.depositRateCPP)}</p>
+                            </div>
+                            <div>
+                              <p className="text-xs text-muted-foreground">CPP Policy</p>
+                              <p>{formatCurrency(group.policyValueCPP)}</p>
+                            </div>
+                          </div>
                         </div>
-                      )}
 
-                      {group.ratePackage.type === "yearly" && (
-                        <div className="flex justify-between">
-                          <span>Yearly Rate:</span>
-                          <span>{formatCurrency(group.ratePackage.yearlyRate || 0)}</span>
+                        {/* Additional Charges */}
+                        <div className="mt-4">
+                          <h4 className="text-sm font-medium mb-2">Additional Charges</h4>
+                          <div>
+                            <p className="text-xs text-muted-foreground">Delivery Charges</p>
+                            <p>{formatCurrency(group.deliveryCharges)}</p>
+                          </div>
                         </div>
-                      )}
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-        </TabsContent>
+                      </div>
+                    ))
+                ) : (
+                  <p>No car group rates defined for this rate.</p>
+                )}
+              </div>
+            </CardContent>
+          </Card>
 
-        <TabsContent value="additional-options" className="space-y-4 mt-4">
-          <Card>
+          {/* Additional Options */}
+          <Card className="md:col-span-3">
             <CardHeader>
               <CardTitle>Additional Options</CardTitle>
               <CardDescription>Options included in this rate</CardDescription>
             </CardHeader>
             <CardContent>
               {rate.additionalOptions && rate.additionalOptions.length > 0 ? (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Code</TableHead>
-                      <TableHead>Description</TableHead>
-                      <TableHead>Customer Pays</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {rate.additionalOptions
-                      .filter((option) => option.included)
-                      .map((option) => (
-                        <TableRow key={option.id}>
-                          <TableCell>{option.code}</TableCell>
-                          <TableCell>{option.description}</TableCell>
-                          <TableCell>{option.customerPays ? "Yes" : "No"}</TableCell>
-                        </TableRow>
-                      ))}
-                  </TableBody>
-                </Table>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  {rate.additionalOptions
+                    .filter((option) => option.included)
+                    .map((option) => (
+                      <div key={option.id} className="border rounded-md p-4">
+                        <h3 className="font-medium">{option.description}</h3>
+                        <p className="text-sm text-muted-foreground">Code: {option.code}</p>
+                        <p className="text-sm mt-2">
+                          <span
+                            className={`inline-block px-2 py-1 text-xs rounded-full ${
+                              option.customerPays ? "bg-blue-100 text-blue-800" : "bg-green-100 text-green-800"
+                            }`}
+                          >
+                            {option.customerPays ? "Customer Pays" : "Included in Rate"}
+                          </span>
+                        </p>
+                      </div>
+                    ))}
+                </div>
               ) : (
-                <p className="text-muted-foreground">No additional options included in this rate.</p>
+                <p>No additional options included in this rate.</p>
               )}
             </CardContent>
           </Card>
-        </TabsContent>
-      </Tabs>
-    </div>
-  )
+        </div>
+      </div>
+    )
+  } catch (error) {
+    console.error("Error in ViewRentalRatePage:", error)
+    return (
+      <div className="container mx-auto py-10">
+        <div className="bg-red-50 border border-red-200 text-red-800 rounded-md p-4">
+          <h2 className="text-lg font-semibold">Error Loading Rental Rate</h2>
+          <p>There was a problem loading the rental rate. Please try again or contact support.</p>
+        </div>
+      </div>
+    )
+  }
 }
