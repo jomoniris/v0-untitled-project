@@ -282,6 +282,8 @@ export function RentalRateForm({
 
   async function onSubmit(data: RentalRateFormValues) {
     setIsSubmitting(true)
+    console.log("Form submitted with data:", data)
+    console.log("isEditing:", isEditing, "rateId:", rateId)
 
     try {
       // Create FormData object
@@ -306,13 +308,18 @@ export function RentalRateForm({
 
       if (isEditing && rateId) {
         // Update existing rate
+        console.log("Updating rental rate with ID:", rateId)
         result = await updateRentalRate(rateId, formData)
+        console.log("Update result:", result)
       } else {
         // Create new rate
+        console.log("Creating new rental rate")
         result = await createRentalRate(formData)
+        console.log("Create result:", result)
       }
 
       if (result.error) {
+        console.error("Error from server action:", result.error)
         toast({
           title: "Error",
           description: result.error,
