@@ -8,8 +8,14 @@ import { RentalRateForm } from "@/components/rental-rate-form"
 import { getZones } from "@/app/actions/zone-actions"
 import { notFound } from "next/navigation"
 
-export default async function EditRentalRatePage({ params }: { params: { id: string } }) {
-  // Properly await the params by using it in an async context
+interface EditRentalRatePageProps {
+  params: {
+    id: string
+  }
+}
+
+export default async function EditRentalRatePage({ params }: EditRentalRatePageProps) {
+  // Use the id directly from params without destructuring
   const id = params.id
 
   console.log("Fetching rental rate for edit, ID:", id)

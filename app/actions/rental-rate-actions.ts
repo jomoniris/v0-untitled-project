@@ -114,6 +114,7 @@ export async function getRentalRates(filter = "all") {
 // Get a single rental rate by ID
 export async function getRentalRateById(id: string) {
   try {
+    console.log("Getting rental rate by ID:", id)
     const rate = await sql`
       SELECT 
         rr.id, 
@@ -135,8 +136,11 @@ export async function getRentalRateById(id: string) {
     `
 
     if (rate.length === 0) {
+      console.error("Rental rate not found for ID:", id)
       return { error: "Rental rate not found" }
     }
+
+    console.log("Found rental rate:", rate[0])
 
     // Get car group rates for this rate
     const carGroupRates = await getCarGroupRatesForRate(rate[0].id)
@@ -172,7 +176,7 @@ async function getCarGroupRatesForRate(rateId: string) {
         cgr.policy_value_pai as "policyValuePAI",
         cgr.deposit_rate_scdw as "depositRateSCDW",
         cgr.policy_value_scdw as "policyValueSCDW",
-        cgr.deposit_rate_cpp as "policyValueCPP",
+        cgr.deposit_rate_cpp as "depositRateCPP",
         cgr.policy_value_cpp as "policyValueCPP",
         cgr.delivery_charges as "deliveryCharges",
         cgr.rate_type as "rateType",
@@ -636,21 +640,27 @@ export async function updateRentalRate(id: string, formData: FormData) {
       bookingEndDate: validatedData.bookingEndDate,
     })
 
-    await sql`
-      UPDATE rental_rates
-      SET 
-        rate_name = ${validatedData.rateName},
-        pickup_start_date = ${validatedData.pickupStartDate},
-        pickup_end_date = ${validatedData.pickupEndDate},
-        rate_zone_id = ${rateZoneId},
-        booking_start_date = ${validatedData.bookingStartDate},
-        booking_end_date = ${validatedData.bookingEndDate},
-        active = ${validatedData.active},
-        updated_at = CURRENT_TIMESTAMP
-      WHERE id = ${id}
-    `
-
-    console.log("Updated rental rate basic information")
+    try {
+      await sql`
+        UPDATE rental_rates
+        SET 
+          rate_name = ${validatedData.rateName},
+          pickup_start_date = ${validatedData.pickupStartDate},
+          pickup_end_date = ${validatedData.pickupEndDate},
+          rate_zone_id = ${rateZoneId},
+          booking_start_date = ${validatedData.bookingStartDate},
+          booking_end_date = ${validatedData.bookingEndDate},
+          active = ${validatedData.active},
+          updated_at = CURRENT_TIMESTAMP
+        WHERE id = ${id}
+      `
+      console.log("Updated rental rate basic information successfully")
+    } catch (error) {
+      console.error("Error updating rental rate basic information:", error)
+      throw new Error(
+        `Error updating rental rate basic information: ${error instanceof Error ? error.message : String(error)}`,
+      )
+    }
 
     // Process car group rates
     const carGroupRatesJson = formData.get("carGroupRates") as string
@@ -658,27 +668,36 @@ export async function updateRentalRate(id: string, formData: FormData) {
       console.log("Car group rates JSON for update:", carGroupRatesJson)
       const carGroupRates = JSON.parse(carGroupRatesJson) as CarGroupRate[]
 
-      // Delete existing car group rates and related data
-      // FIX: First delete dependent records to avoid foreign key constraint errors
-      await sql`
-        DELETE FROM daily_rates 
-        WHERE car_group_rate_id IN (
-          SELECT id FROM car_group_rates WHERE rental_rate_id = ${id}
-        )
-      `
+      try {
+        // Delete existing car group rates and related data
+        // FIX: First delete dependent records to avoid foreign key constraint errors
+        await sql`
+          DELETE FROM daily_rates 
+          WHERE car_group_rate_id IN (
+            SELECT id FROM car_group_rates WHERE rental_rate_id = ${id}
+          )
+        `
+        console.log("Deleted existing daily rates")
 
-      await sql`
-        DELETE FROM other_rates 
-        WHERE car_group_rate_id IN (
-          SELECT id FROM car_group_rates WHERE rental_rate_id = ${id}
-        )
-      `
+        await sql`
+          DELETE FROM other_rates 
+          WHERE car_group_rate_id IN (
+            SELECT id FROM car_group_rates WHERE rental_rate_id = ${id}
+          )
+        `
+        console.log("Deleted existing other rates")
 
-      await sql`
-        DELETE FROM car_group_rates
-        WHERE rental_rate_id = ${id}
-      `
-      console.log("Deleted existing car group rates and related data")
+        await sql`
+          DELETE FROM car_group_rates
+          WHERE rental_rate_id = ${id}
+        `
+        console.log("Deleted existing car group rates")
+      } catch (error) {
+        console.error("Error deleting existing car group rates:", error)
+        throw new Error(
+          `Error deleting existing car group rates: ${error instanceof Error ? error.message : String(error)}`,
+        )
+      }
 
       // Only process included car groups
       const includedCarGroups = carGroupRates.filter((group) => group.included)
@@ -764,12 +783,19 @@ export async function updateRentalRate(id: string, formData: FormData) {
       console.log("Additional options JSON for update:", additionalOptionsJson)
       const additionalOptions = JSON.parse(additionalOptionsJson) as AdditionalOption[]
 
-      // Delete existing additional options
-      await sql`
-        DELETE FROM rate_additional_options
-        WHERE rental_rate_id = ${id}
-      `
-      console.log("Deleted existing additional options")
+      try {
+        // Delete existing additional options
+        await sql`
+          DELETE FROM rate_additional_options
+          WHERE rental_rate_id = ${id}
+        `
+        console.log("Deleted existing additional options")
+      } catch (error) {
+        console.error("Error deleting existing additional options:", error)
+        throw new Error(
+          `Error deleting existing additional options: ${error instanceof Error ? error.message : String(error)}`,
+        )
+      }
 
       // Only process included options
       const includedOptions = additionalOptions.filter((option) => option.included)
