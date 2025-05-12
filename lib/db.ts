@@ -4,7 +4,7 @@ import { neon, neonConfig } from "@neondatabase/serverless"
 if (process.env.NEON_HTTP_ENDPOINT) {
   console.log("Using NEON_HTTP_ENDPOINT for database connection")
   neonConfig.fetchConnectionCache = true
-  neonConfig.fetchEndpoint = process.env.NEON_HTTP_ENDPOINT
+  neonConfig.fetchEndpoint = process.NEON_HTTP_ENDPOINT
   neonConfig.useSecureWebSocket = true
 } else {
   console.log("NEON_HTTP_ENDPOINT not found, using WebSocket only")
@@ -13,6 +13,9 @@ if (process.env.NEON_HTTP_ENDPOINT) {
 
 // Initialize the database connection
 export const sql = neon(process.env.DATABASE_URL!)
+
+// Export db as an alias for sql to maintain compatibility
+export const db = sql
 
 // Export a function to test the database connection
 export async function testConnection() {

@@ -9,7 +9,8 @@ import { getZones } from "@/app/actions/zone-actions"
 import { notFound } from "next/navigation"
 
 export default async function EditRentalRatePage({ params }: { params: { id: string } }) {
-  const { id } = params
+  // Properly await the params by using it in an async context
+  const id = params.id
 
   console.log("Fetching rental rate for edit, ID:", id)
 

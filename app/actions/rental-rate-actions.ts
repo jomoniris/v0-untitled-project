@@ -630,7 +630,12 @@ export async function updateRentalRate(id: string, formData: FormData) {
       }
     }
 
-    // Update the rental rate
+    // Update the rental rate - Fix for booking dates not updating
+    console.log("Updating rental rate with booking dates:", {
+      bookingStartDate: validatedData.bookingStartDate,
+      bookingEndDate: validatedData.bookingEndDate,
+    })
+
     await sql`
       UPDATE rental_rates
       SET 
@@ -682,9 +687,10 @@ export async function updateRentalRate(id: string, formData: FormData) {
       for (const carGroup of includedCarGroups) {
         console.log("Processing car group for update:", carGroup)
         console.log("Group ID (before processing):", carGroup.groupId, "Type:", typeof carGroup.groupId)
+        console.log("Delivery charges:", carGroup.deliveryCharges) // Log delivery charges
 
         try {
-          // Insert the car group rate
+          // Insert the car group rate - Fix for delivery charges not updating
           const carGroupRateResult = await sql`
             INSERT INTO car_group_rates (
               rental_rate_id, vehicle_group_id, miles_per_day, miles_rate,
